@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>10' Diving Board — Minimum Water Envelope (ANSI/APSP/ICC-5)</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: #f0f4f8; color: #1a2332; padding: 24px; }
+  h1 { font-size: 22px; font-weight: 700; text-align: center; margin-bottom: 4px; color: #0d2137; }
+  .subtitle { text-align: center; font-size: 13px; color: #5a6a7a; margin-bottom: 20px; }
+  .diagram-card { background: #fff; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); padding: 28px 20px 20px; margin-bottom: 20px; overflow-x: auto; }
+  .diagram-card h2 { font-size: 15px; font-weight: 700; color: #0d2137; margin-bottom: 14px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .note { font-size: 12px; color: #6b7a8d; line-height: 1.5; margin-top: 10px; }
+  .note strong { color: #1a2332; }
+
+  /* Tables */
+  .spec-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
+  .spec-table th { background: #0d2137; color: #fff; padding: 8px 10px; text-align: center; font-weight: 600; font-size: 12px; }
+  .spec-table th:first-child { text-align: left; border-radius: 6px 0 0 0; }
+  .spec-table th:last-child { border-radius: 0 6px 0 0; }
+  .spec-table td { padding: 7px 10px; text-align: center; border-bottom: 1px solid #e8ecf0; }
+  .spec-table td:first-child { text-align: left; font-weight: 600; color: #0d2137; }
+  .spec-table tr:last-child td:first-child { border-radius: 0 0 0 6px; }
+  .spec-table tr:last-child td:last-child { border-radius: 0 0 6px 0; }
+  .spec-table tr:hover td { background: #f0f6ff; }
+  .spec-table .highlight td { background: #e8f4fd; font-weight: 600; }
+
+  /* Type selector */
+  .type-tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .type-tab { padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; border: 2px solid #d0d8e0; background: #fff; color: #5a6a7a; transition: all 0.2s; }
+  .type-tab.active { background: #0d6efd; border-color: #0d6efd; color: #fff; }
+  .type-tab:hover:not(.active) { border-color: #0d6efd; color: #0d6efd; }
+
+  /* Legend */
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 12px; font-size: 12px; }
+  .legend-item { display: flex; align-items: center; gap: 5px; }
+  .legend-swatch { width: 18px; height: 4px; border-radius: 2px; }
+
+  .flex-row { display: flex; gap: 20px; flex-wrap: wrap; }
+  .flex-row > div { flex: 1; min-width: 300px; }
+
+  @media (max-width: 700px) {
+    body { padding: 12px; }
+    .diagram-card { padding: 16px 12px; }
+    svg { max-width: 100%; height: auto; }
+  }
+
+  .callout { background: #fff8e6; border-left: 4px solid #f0a500; padding: 10px 14px; border-radius: 0 8px 8px 0; margin-top: 14px; font-size: 12px; line-height: 1.5; }
+  .callout strong { color: #9a6700; }
+</style>
+</head>
+<body>
+
+<h1>10-Foot Diving Board — Minimum Water Envelope</h1>
+<p class="subtitle">Per ANSI/APSP/ICC-5 (Residential Inground Swimming Pools) &amp; SR Smith Specifications</p>
+
+<!-- TYPE SELECTOR -->
+<div class="diagram-card">
+  <h2>Select Your Pool Type</h2>
+  <div class="type-tabs">
+    <div class="type-tab" data-type="3" onclick="setType(3)">Type III — 10' Board @ 26" above water</div>
+    <div class="type-tab" data-type="4" onclick="setType(4)">Type IV — 10' Board @ 30" above water</div>
+    <div class="type-tab active" data-type="5" onclick="setType(5)">Type V — 10' Board @ 30"+ above water</div>
+  </div>
+  <p class="note"><strong>Pool Type</strong> is determined by the diving equipment installed. A standard residential 10' diving board on a typical stand is usually <strong>Type III</strong> (26" above water) or <strong>Type IV</strong> (30" above water). Type V is for higher-mounted boards. Choose the type that matches your installation.</p>
+</div>
+
+<!-- SIDE CROSS-SECTION -->
+<div class="diagram-card">
+  <h2>Side Cross-Section — Diving Envelope Profile</h2>
+  <div class="legend">
+    <div class="legend-item"><div class="legend-swatch" style="background:#0d6efd"></div> Water surface</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#6c4f2c"></div> Pool floor</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#e74c3c"></div> Minimum envelope boundary</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#999; border: 1px dashed #666"></div> Dimension lines</div>
+  </div>
+  <div style="overflow-x:auto;">
+    <svg id="sideSvg" viewBox="0 0 820 440" width="820" height="440" xmlns="http://www.w3.org/2000/svg" style="font-family:'Segoe UI',system-ui,sans-serif;">
+    </svg>
+  </div>
+  <div class="callout">
+    <strong>Slope Rule:</strong> The floor slope between Points C → D shall not exceed <strong>1 vertical : 3 horizontal</strong>. The slope from the shallow end to the deep area floor transition shall not exceed 1:7.
+  </div>
+</div>
+
+<!-- TOP / PLAN VIEW -->
+<div class="diagram-card">
+  <h2>Plan View (Top Down) — Width Envelope</h2>
+  <div style="overflow-x:auto;">
+    <svg id="topSvg" viewBox="0 0 820 300" width="820" height="300" xmlns="http://www.w3.org/2000/svg" style="font-family:'Segoe UI',system-ui,sans-serif;">
+    </svg>
+  </div>
+  <p class="note"><strong>Note:</strong> One-half (½) the width at each point must be available on <em>each side</em> of the diving board centerline.</p>
+</div>
+
+<!-- SPEC TABLE -->
+<div class="diagram-card">
+  <h2>Complete Dimension Table — All Residential Pool Types</h2>
+  <p class="note" style="margin-bottom:10px">All values are <strong>minimums</strong> unless noted. Dimensions per ANSI/APSP/ICC-5 2011 (R2022).</p>
+
+  <h3 style="font-size:13px; margin:14px 0 6px; color:#0d2137;">Minimum Depths</h3>
+  <table class="spec-table">
+    <tr><th>Pool Type</th><th>Point A<br>(under tip)</th><th>Point B<br>(deepest)</th><th>Point C<br>(transition)</th><th>Point D<br>(shallow end)</th></tr>
+    <tr class="" id="depthRow3"><td>Type III (10' @ 26")</td><td>6'-10"</td><td>8'-0"</td><td>5'-0"</td><td>4'-6"</td></tr>
+    <tr class="" id="depthRow4"><td>Type IV (10' @ 30")</td><td>7'-8"</td><td>8'-6"</td><td>5'-0"</td><td>4'-6"</td></tr>
+    <tr class="" id="depthRow5"><td>Type V (10' @ 30"+)</td><td>8'-6"</td><td>9'-0"</td><td>5'-0"</td><td>4'-6"</td></tr>
+  </table>
+
+  <h3 style="font-size:13px; margin:14px 0 6px; color:#0d2137;">Minimum Widths</h3>
+  <table class="spec-table">
+    <tr><th>Pool Type</th><th>Point A</th><th>Point B</th><th>Point C</th><th>Point D</th></tr>
+    <tr id="widthRow3"><td>Type III</td><td>12'-0"</td><td>15'-0"</td><td>12'-0"</td><td>8'-0"</td></tr>
+    <tr id="widthRow4"><td>Type IV</td><td>15'-0"</td><td>18'-0"</td><td>15'-0"</td><td>9'-0"</td></tr>
+    <tr id="widthRow5"><td>Type V</td><td>15'-0"</td><td>18'-0"</td><td>15'-0"</td><td>9'-0"</td></tr>
+  </table>
+
+  <h3 style="font-size:13px; margin:14px 0 6px; color:#0d2137;">Minimum Lengths (Horizontal Distances)</h3>
+  <table class="spec-table">
+    <tr><th>Pool Type</th><th>W→A<br>(wall to tip)</th><th>A→B</th><th>B→C</th><th>C→D<br>(slope zone)</th><th>D→E</th><th>W→E<br>(total)</th></tr>
+    <tr id="lengthRow3"><td>Type III</td><td>2'-0"</td><td>7'-6"</td><td>9'-0"</td><td>1'-6"*</td><td>6'-0"</td><td>26'-0"</td></tr>
+    <tr id="lengthRow4"><td>Type IV</td><td>2'-6"</td><td>8'-0"</td><td>10'-6"</td><td>1'-6"*</td><td>6'-0"</td><td>28'-6"</td></tr>
+    <tr id="lengthRow5"><td>Type V</td><td>3'-0"</td><td>9'-0"</td><td>12'-0"</td><td>1'-6"*</td><td>6'-0"</td><td>31'-6"</td></tr>
+  </table>
+  <p class="note">* C→D distance varies based on floor slope (max 1:3 incline). Values shown assume the maximum allowed slope.</p>
+</div>
+
+<!-- KEY RULES -->
+<div class="diagram-card">
+  <h2>Key Rules &amp; Requirements</h2>
+  <div style="font-size:13px; line-height:1.8; color:#2a3a4a;">
+    <p><strong>1.</strong> The diving board tip must be located directly above <strong>Point A</strong> — the reference point for the entire envelope.</p>
+    <p><strong>2.</strong> <strong>Point B</strong> is the deepest point of the envelope and must maintain its minimum depth across the full A→B→C zone.</p>
+    <p><strong>3.</strong> The floor slope from <strong>C → D</strong> cannot exceed <strong>1:3</strong> (1 ft vertical per 3 ft horizontal).</p>
+    <p><strong>4.</strong> The floor slope from the shallow end to the deep area transition cannot exceed <strong>1:7</strong>.</p>
+    <p><strong>5. Half-width rule:</strong> ½ of the minimum width at each point must be available on <em>each side</em> of the board centerline.</p>
+    <p><strong>6.</strong> The minimum water depth at Point D (shallow end of envelope) is <strong>4'-6"</strong> (54 inches).</p>
+    <p><strong>7.</strong> Board height above water is measured from the water surface to the top of the board at the tip.</p>
+    <p><strong>8.</strong> All dimensions are <strong>minimums</strong> — they must be met or exceeded. Installing a diving board on a pool that does not meet these specs violates manufacturer instructions and ANSI/APSP standards.</p>
+  </div>
+</div>
+
+<p style="text-align:center; font-size:11px; color:#8a9aaa; margin-top:16px;">Reference: ANSI/APSP/ICC-5 2011 (R2022) &amp; SR Smith Installation Specifications &bull; Diagram for professional reference only &bull; Always verify local code requirements</p>
+
+<script>
+// Data for each pool type
+const DATA = {
+  3: {
+    label: "Type III — 10' Board @ 26\" above water",
+    depthA: 82, depthB: 96, depthC: 60, depthD: 54,  // inches
+    widthA: 144, widthB: 180, widthC: 144, widthD: 96,
+    lenWA: 24, lenAB: 90, lenBC: 108, lenDE: 72,
+    boardHeight: 26, totalLen: 312 // 26'0" = 312"
+  },
+  4: {
+    label: "Type IV — 10' Board @ 30\" above water",
+    depthA: 92, depthB: 102, depthC: 60, depthD: 54,
+    widthA: 180, widthB: 216, widthC: 180, widthD: 108,
+    lenWA: 30, lenAB: 96, lenBC: 126, lenDE: 72,
+    boardHeight: 30, totalLen: 342 // 28'6" = 342"
+  },
+  5: {
+    label: "Type V — 10' Board @ 30\"+ above water",
+    depthA: 102, depthB: 108, depthC: 60, depthD: 54,
+    widthA: 180, widthB: 216, widthC: 180, widthD: 108,
+    lenWA: 36, lenAB: 108, lenBC: 144, lenDE: 72,
+    boardHeight: 30, totalLen: 378 // 31'6" = 378"
+  }
+};
+
+let currentType = 5;
+
+function fmtFtIn(inches) {
+  const ft = Math.floor(inches / 12);
+  const inc = inches % 12;
+  return inc === 0 ? ft + "'" : ft + "'-" + inc + '"';
+}
+
+function setType(t) {
+  currentType = t;
+  document.querySelectorAll('.type-tab').forEach(el => {
+    el.classList.toggle('active', parseInt(el.dataset.type) === t);
+  });
+  // Highlight table rows
+  [3,4,5].forEach(r => {
+    const cls = r === t ? 'highlight' : '';
+    ['depthRow','widthRow','lengthRow'].forEach(prefix => {
+      const row = document.getElementById(prefix + r);
+      if (row) row.className = cls;
+    });
+  });
+  drawSide();
+  drawTop();
+}
+
+function drawSide() {
+  const d = DATA[currentType];
+  const svg = document.getElementById('sideSvg');
+
+  // Calculate CD based on 1:3 slope
+  const cdVertical = d.depthC - d.depthD; // inches
+  const cdHorizontal = cdVertical * 3;
+
+  // Layout constants
+  const LEFT = 80, TOP = 60, RIGHT = 780, BOT = 380;
+  const WATER_Y = TOP + 40; // water surface line
+  const totalHoriz = d.lenWA + d.lenAB + d.lenBC + cdHorizontal + d.lenDE;
+  const scaleX = (RIGHT - LEFT) / totalHoriz;
+  const maxDepth = d.depthB;
+  const scaleY = (BOT - WATER_Y - 20) / (maxDepth + 10);
+
+  // Horizontal positions of points
+  const xW = LEFT;
+  const xA = LEFT + d.lenWA * scaleX;
+  const xB = xA + d.lenAB * scaleX;
+  const xC = xB + d.lenBC * scaleX;
+  const xD = xC + cdHorizontal * scaleX;
+  const xE = xD + d.lenDE * scaleX;
+
+  // Vertical positions (depth from water surface)
+  const yA = WATER_Y + d.depthA * scaleY;
+  const yB = WATER_Y + d.depthB * scaleY;
+  const yC = WATER_Y + d.depthC * scaleY;
+  const yD = WATER_Y + d.depthD * scaleY;
+
+  // Board position
+  const boardY = WATER_Y - d.boardHeight * scaleY * 0.6;
+
+  let html = '';
+
+  // Background water fill
+  html += `<rect x="${LEFT}" y="${WATER_Y}" width="${xE - LEFT}" height="${BOT - WATER_Y - 10}" fill="#d4eaf7" opacity="0.4" rx="2"/>`;
+
+  // Pool floor path (the envelope boundary)
+  const floorPath = `M ${xW},${yA} L ${xA},${yA} L ${xA},${yB} L ${xB},${yB} L ${xC},${yC} L ${xD},${yD} L ${xE},${yD}`;
+
+  // Fill under the envelope
+  html += `<path d="${floorPath} L ${xE},${WATER_Y} L ${xW},${WATER_Y} Z" fill="#e8d5b8" opacity="0.35"/>`;
+
+  // Red envelope boundary
+  html += `<path d="${floorPath}" fill="none" stroke="#e74c3c" stroke-width="3" stroke-linejoin="round"/>`;
+
+  // Deep end wall
+  html += `<line x1="${xW}" y1="${WATER_Y - 15}" x2="${xW}" y2="${yA + 5}" stroke="#6c4f2c" stroke-width="3"/>`;
+
+  // Water surface
+  html += `<line x1="${LEFT - 10}" y1="${WATER_Y}" x2="${xE + 15}" y2="${WATER_Y}" stroke="#0d6efd" stroke-width="2.5" stroke-dasharray="8,4"/>`;
+  html += `<text x="${xE + 18}" y="${WATER_Y + 4}" font-size="10" fill="#0d6efd" font-weight="600">WATER LINE</text>`;
+
+  // Deck line
+  html += `<line x1="${LEFT - 20}" y1="${WATER_Y - 15}" x2="${LEFT + 10}" y2="${WATER_Y - 15}" stroke="#888" stroke-width="2"/>`;
+  html += `<text x="${LEFT - 22}" y="${WATER_Y - 18}" font-size="9" fill="#888" text-anchor="end">DECK</text>`;
+  html += `<line x1="${xE - 5}" y1="${WATER_Y - 15}" x2="${xE + 40}" y2="${WATER_Y - 15}" stroke="#888" stroke-width="2"/>`;
+
+  // Diving board
+  const boardStartX = xW - 30;
+  html += `<rect x="${boardStartX}" y="${boardY - 3}" width="${xA - boardStartX + 15}" height="6" rx="2" fill="#5a7a5a" stroke="#3a5a3a" stroke-width="1"/>`;
+  html += `<text x="${(boardStartX + xA) / 2}" y="${boardY - 10}" font-size="11" fill="#3a5a3a" text-anchor="middle" font-weight="700">10' DIVING BOARD</text>`;
+  // Stand
+  html += `<rect x="${boardStartX}" y="${boardY - 3}" width="8" height="${WATER_Y - boardY - 12}" rx="1" fill="#777"/>`;
+  html += `<rect x="${boardStartX - 4}" y="${WATER_Y - 18}" width="16" height="4" rx="1" fill="#777"/>`;
+
+  // Board height dimension
+  const bhX = boardStartX + 20;
+  html += `<line x1="${xA + 10}" y1="${boardY}" x2="${xA + 10}" y2="${WATER_Y}" stroke="#0d6efd" stroke-width="1" stroke-dasharray="3,2"/>`;
+  html += `<text x="${xA + 14}" y="${(boardY + WATER_Y) / 2 + 3}" font-size="9" fill="#0d6efd" font-weight="600">${d.boardHeight}"</text>`;
+
+  // Point labels and depth dimensions
+  const points = [
+    { label: 'A', x: xA, y: yA, depth: d.depthA, desc: '(under tip)' },
+    { label: 'B', x: xB, y: yB, depth: d.depthB, desc: '(deepest)' },
+    { label: 'C', x: xC, y: yC, depth: d.depthC, desc: '(transition)' },
+    { label: 'D', x: xD, y: yD, depth: d.depthD, desc: '(shallow)' },
+    { label: 'E', x: xE, y: yD, depth: d.depthD, desc: '' }
+  ];
+
+  points.forEach(p => {
+    // Point dot on the floor
+    html += `<circle cx="${p.x}" cy="${p.y}" r="5" fill="#e74c3c" stroke="#fff" stroke-width="2"/>`;
+
+    // Dashed leader from floor dot up to water surface area
+    html += `<line x1="${p.x}" y1="${WATER_Y}" x2="${p.x}" y2="${p.y}" stroke="#e74c3c" stroke-width="1" stroke-dasharray="4,3" opacity="0.4"/>`;
+
+    // Point letter label — always just above water line for clean alignment
+    html += `<text x="${p.x}" y="${WATER_Y - 18}" font-size="14" fill="#e74c3c" text-anchor="middle" font-weight="800">${p.label}</text>`;
+    if (p.desc) {
+      html += `<text x="${p.x}" y="${WATER_Y - 8}" font-size="8" fill="#888" text-anchor="middle">${p.desc}</text>`;
+    }
+
+    // Depth label — centered on the dashed leader, offset right
+    if (p.label !== 'E') {
+      const labelY = (WATER_Y + p.y) / 2 + 4;
+      html += `<rect x="${p.x + 4}" y="${labelY - 10}" width="${fmtFtIn(p.depth).length * 7 + 4}" height="14" rx="3" fill="#fff" opacity="0.85"/>`;
+      html += `<text x="${p.x + 7}" y="${labelY}" font-size="11" fill="#c0392b" font-weight="700">${fmtFtIn(p.depth)}</text>`;
+    }
+  });
+
+  // Horizontal length dimensions — placed well below pool floor in a dedicated band
+  const dimBandTop = BOT - 45;
+  const segments = [
+    { label: fmtFtIn(d.lenWA), sub: 'W→A', x1: xW, x2: xA },
+    { label: fmtFtIn(d.lenAB), sub: 'A→B', x1: xA, x2: xB },
+    { label: fmtFtIn(d.lenBC), sub: 'B→C', x1: xB, x2: xC },
+    { label: fmtFtIn(cdHorizontal), sub: 'C→D', x1: xC, x2: xD },
+    { label: fmtFtIn(d.lenDE), sub: 'D→E', x1: xD, x2: xE }
+  ];
+
+  // Separator line between diagram and dimension band
+  html += `<line x1="${LEFT - 5}" y1="${dimBandTop - 8}" x2="${xE + 5}" y2="${dimBandTop - 8}" stroke="#d0d8e0" stroke-width="1"/>`;
+
+  segments.forEach((seg) => {
+    const midX = (seg.x1 + seg.x2) / 2;
+    const y = dimBandTop + 8;
+    // Horizontal line with end ticks
+    html += `<line x1="${seg.x1 + 2}" y1="${y}" x2="${seg.x2 - 2}" y2="${y}" stroke="#555" stroke-width="1" marker-start="url(#arrowL)" marker-end="url(#arrowR)"/>`;
+    html += `<line x1="${seg.x1}" y1="${y - 5}" x2="${seg.x1}" y2="${y + 5}" stroke="#555" stroke-width="1.5"/>`;
+    html += `<line x1="${seg.x2}" y1="${y - 5}" x2="${seg.x2}" y2="${y + 5}" stroke="#555" stroke-width="1.5"/>`;
+    // Label + sub
+    html += `<text x="${midX}" y="${y - 5}" font-size="10" fill="#0d2137" text-anchor="middle" font-weight="700">${seg.label}</text>`;
+    html += `<text x="${midX}" y="${y + 14}" font-size="8" fill="#888" text-anchor="middle">${seg.sub}</text>`;
+  });
+
+  // Total length
+  html += `<text x="${(xW + xE) / 2}" y="${TOP + 12}" font-size="12" fill="#0d2137" text-anchor="middle" font-weight="700">Total Envelope Length: ${fmtFtIn(d.lenWA + d.lenAB + d.lenBC + cdHorizontal + d.lenDE)} (W → E)</text>`;
+
+  // Slope annotation on C-D
+  const slopeMidX = (xC + xD) / 2;
+  const slopeMidY = (yC + yD) / 2;
+  html += `<text x="${slopeMidX}" y="${slopeMidY - 8}" font-size="10" fill="#e67e22" text-anchor="middle" font-weight="700">MAX SLOPE 1:3</text>`;
+
+  // Title
+  html += `<text x="${(LEFT + xE) / 2}" y="${TOP - 5}" font-size="14" fill="#0d2137" text-anchor="middle" font-weight="700">${d.label}</text>`;
+
+  // Flat bottom annotation — positioned in the water area above the floor, between A and C
+  const flatLabelY = yB - 12;
+  html += `<line x1="${xA + 8}" y1="${flatLabelY + 4}" x2="${xC - 8}" y2="${flatLabelY + 4}" stroke="#0d6efd" stroke-width="1" opacity="0.3"/>`;
+  html += `<text x="${(xA + xC) / 2}" y="${flatLabelY}" font-size="10" fill="#0d6efd" text-anchor="middle" font-weight="600" opacity="0.8">FLAT BOTTOM ZONE — maintain min depth</text>`;
+
+  svg.innerHTML = html;
+}
+
+function drawTop() {
+  const d = DATA[currentType];
+  const svg = document.getElementById('topSvg');
+
+  const cdVertical = d.depthC - d.depthD;
+  const cdHorizontal = cdVertical * 3;
+  const totalLen = d.lenWA + d.lenAB + d.lenBC + cdHorizontal + d.lenDE;
+
+  const LEFT = 60, TOP = 50, RIGHT = 780, BOT = 260;
+  const CY = (TOP + BOT) / 2; // centerline Y
+  const scaleX = (RIGHT - LEFT) / totalLen;
+  const maxHalfWidth = Math.max(d.widthA, d.widthB, d.widthC, d.widthD) / 2;
+  const scaleY = (BOT - TOP - 20) / (maxHalfWidth * 2);
+
+  const xW = LEFT;
+  const xA = LEFT + d.lenWA * scaleX;
+  const xB = xA + d.lenAB * scaleX;
+  const xC = xB + d.lenBC * scaleX;
+  const xD = xC + cdHorizontal * scaleX;
+  const xE = xD + d.lenDE * scaleX;
+
+  const halfA = d.widthA / 2 * scaleY;
+  const halfB = d.widthB / 2 * scaleY;
+  const halfC = d.widthC / 2 * scaleY;
+  const halfD = d.widthD / 2 * scaleY;
+
+  let html = '';
+
+  // Envelope shape (top-down outline)
+  const envelopePath = `
+    M ${xW},${CY - halfA}
+    L ${xA},${CY - halfA}
+    L ${xB},${CY - halfB}
+    L ${xC},${CY - halfC}
+    L ${xD},${CY - halfD}
+    L ${xE},${CY - halfD}
+    L ${xE},${CY + halfD}
+    L ${xD},${CY + halfD}
+    L ${xC},${CY + halfC}
+    L ${xB},${CY + halfB}
+    L ${xA},${CY + halfA}
+    L ${xW},${CY + halfA}
+    Z
+  `;
+
+  html += `<path d="${envelopePath}" fill="#d4eaf7" opacity="0.5" stroke="#0d6efd" stroke-width="2"/>`;
+
+  // Centerline
+  html += `<line x1="${LEFT - 5}" y1="${CY}" x2="${xE + 10}" y2="${CY}" stroke="#333" stroke-width="1" stroke-dasharray="6,4"/>`;
+  html += `<text x="${xE + 14}" y="${CY + 4}" font-size="9" fill="#333">CL</text>`;
+
+  // Board
+  html += `<rect x="${xW - 30}" y="${CY - 6}" width="${xA - xW + 35}" height="12" rx="3" fill="#5a7a5a" stroke="#3a5a3a" stroke-width="1"/>`;
+  html += `<text x="${(xW - 30 + xA) / 2 + 5}" y="${CY + 3}" font-size="9" fill="#fff" text-anchor="middle" font-weight="600">BOARD</text>`;
+
+  // Width dimension lines at each point
+  const pts = [
+    { label: 'A', x: xA, half: halfA, w: d.widthA },
+    { label: 'B', x: xB, half: halfB, w: d.widthB },
+    { label: 'C', x: xC, half: halfC, w: d.widthC },
+    { label: 'D', x: xD, half: halfD, w: d.widthD },
+  ];
+
+  pts.forEach(p => {
+    // Vertical width line
+    html += `<line x1="${p.x}" y1="${CY - p.half}" x2="${p.x}" y2="${CY + p.half}" stroke="#e74c3c" stroke-width="1.5" stroke-dasharray="4,3"/>`;
+    // Ticks
+    html += `<line x1="${p.x - 4}" y1="${CY - p.half}" x2="${p.x + 4}" y2="${CY - p.half}" stroke="#e74c3c" stroke-width="1.5"/>`;
+    html += `<line x1="${p.x - 4}" y1="${CY + p.half}" x2="${p.x + 4}" y2="${CY + p.half}" stroke="#e74c3c" stroke-width="1.5"/>`;
+    // Label
+    html += `<text x="${p.x}" y="${CY - p.half - 10}" font-size="11" fill="#e74c3c" text-anchor="middle" font-weight="700">${p.label}: ${fmtFtIn(p.w)} wide</text>`;
+    // Half-width annotation
+    html += `<text x="${p.x + 8}" y="${CY - p.half / 2}" font-size="8" fill="#888">${fmtFtIn(p.w / 2)} ea. side</text>`;
+  });
+
+  // Title
+  html += `<text x="${(LEFT + xE) / 2}" y="${TOP - 15}" font-size="13" fill="#0d2137" text-anchor="middle" font-weight="700">Plan View — Minimum Width Envelope</text>`;
+
+  svg.innerHTML = html;
+}
+
+// Initial draw
+setType(5);
+</script>
+
+</body>
+</html>

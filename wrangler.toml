@@ -1,0 +1,8 @@
+name = "pasadena-pools"
+pages_build_output_dir = "tools-deploy"
+compatibility_date = "2024-01-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "dig-sheet-configs"
+database_id = "127e70b7-4a75-4142-b364-e5fac6548942"

@@ -1,0 +1,2633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pasadena Pools — Dig Sheet Generator</title>
+<style>
+  :root {
+    --blue: #0d6efd; --dark: #0d2137; --red: #e74c3c; --green: #27ae60;
+    --orange: #e67e22; --gray: #6b7a8d; --light: #f0f4f8; --white: #fff;
+    --border: #d0d8e0; --shadow: 0 2px 12px rgba(0,0,0,0.08);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--light); color: var(--dark); }
+
+  /* Header */
+  .header { background: var(--dark); color: var(--white); padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; }
+  .header h1 { font-size: 18px; font-weight: 700; }
+  .header .subtitle { font-size: 12px; color: #8aa; }
+
+  /* Layout */
+  .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+  .grid { display: grid; grid-template-columns: 340px 1fr; gap: 20px; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+
+  /* Cards */
+  .card { background: var(--white); border-radius: 10px; box-shadow: var(--shadow); padding: 20px; margin-bottom: 16px; position: relative; }
+  .card h2 { font-size: 14px; font-weight: 700; color: var(--dark); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; border-bottom: 2px solid var(--blue); padding-bottom: 6px; }
+
+  /* Form elements */
+  .form-row { display: flex; gap: 10px; margin-bottom: 10px; align-items: end; }
+  .form-group { display: flex; flex-direction: column; flex: 1; }
+  .form-group label { font-size: 11px; font-weight: 600; color: var(--gray); margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.3px; }
+  input[type="number"], input[type="text"], select {
+    padding: 7px 10px; border: 1.5px solid var(--border); border-radius: 6px;
+    font-size: 14px; font-family: inherit; color: var(--dark); background: var(--white);
+    transition: border-color 0.2s;
+  }
+  input:focus, select:focus { outline: none; border-color: var(--blue); }
+  input[type="number"] { width: 100%; }
+
+  /* Toggle */
+  .toggle-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-size: 13px; }
+  .toggle { position: relative; width: 40px; height: 22px; cursor: pointer; }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .toggle .slider { position: absolute; inset: 0; background: #ccc; border-radius: 22px; transition: 0.3s; }
+  .toggle .slider:before { content: ''; position: absolute; width: 16px; height: 16px; left: 3px; bottom: 3px; background: var(--white); border-radius: 50%; transition: 0.3s; }
+  .toggle input:checked + .slider { background: var(--blue); }
+  .toggle input:checked + .slider:before { transform: translateX(18px); }
+
+  /* Zone list */
+  .zone-item {
+    background: #f8fafc; border: 1.5px solid var(--border); border-radius: 8px;
+    padding: 12px; margin-bottom: 8px; position: relative;
+  }
+  .zone-item.active { border-color: var(--blue); background: #f0f6ff; }
+  .zone-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .zone-name { font-size: 13px; font-weight: 700; color: var(--dark); }
+  .zone-actions { display: flex; gap: 4px; }
+  .zone-btn { width: 24px; height: 24px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+  .zone-btn.up { background: #e8ecf0; color: var(--gray); }
+  .zone-btn.down { background: #e8ecf0; color: var(--gray); }
+  .zone-btn.del { background: #fde8e8; color: var(--red); }
+  .zone-btn:hover { opacity: 0.8; }
+
+  /* Locked diving zones */
+  .zone-locked { background: #f3f0eb; border-color: #d4c8b8; }
+  .zone-locked .zone-fields input:disabled, .zone-locked .zone-fields select:disabled {
+    background: #eee; color: #888; cursor: not-allowed; border-color: #d4c8b8;
+  }
+  .dive-badge {
+    background: #e8f4fd; color: #0d6efd; font-size: 9px; padding: 2px 6px;
+    border-radius: 4px; font-weight: 600; margin-left: 6px; display: inline-block;
+  }
+  .dive-badge.overridden { background: #fff3e0; color: #e67e22; }
+  .override-btn {
+    border: 1.5px solid #e67e22; background: #fff8f0; color: #e67e22;
+    border-radius: 4px; font-size: 10px; font-weight: 700; padding: 2px 8px;
+    cursor: pointer; text-transform: uppercase; letter-spacing: 0.3px;
+  }
+  .override-btn:hover { background: #fff3e0; }
+  .lock-btn {
+    border: 1.5px solid var(--blue); background: #f0f6ff; color: var(--blue);
+    border-radius: 4px; font-size: 10px; font-weight: 700; padding: 2px 8px;
+    cursor: pointer; text-transform: uppercase; letter-spacing: 0.3px;
+  }
+  .lock-btn:hover { background: #e0edff; }
+  .zone-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .zone-fields .form-group label { font-size: 10px; }
+  .zone-fields input, .zone-fields select { font-size: 12px; padding: 5px 7px; }
+
+  /* Section headers */
+  .section-label {
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+    color: var(--white); padding: 6px 12px; border-radius: 6px 6px 0 0; margin-bottom: 0;
+  }
+  .section-shallow { background: var(--blue); }
+  .section-deep { background: #8B4513; }
+
+  /* Gap/overlap indicator */
+  .gap-indicator {
+    text-align: center; padding: 10px 16px; border-radius: 8px; font-size: 13px; font-weight: 600;
+    margin-bottom: 16px;
+  }
+  .gap-ok { background: #e8f8e8; color: var(--green); border: 1.5px solid var(--green); }
+  .gap-over { background: #fde8e8; color: var(--red); border: 1.5px solid var(--red); }
+  .gap-exact { background: #e8f4fd; color: var(--blue); border: 1.5px solid var(--blue); }
+
+  /* Add zone button */
+  .add-zone-btn {
+    width: 100%; padding: 8px; border: 2px dashed var(--border); border-radius: 8px;
+    background: transparent; color: var(--blue); font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .add-zone-btn:hover { border-color: var(--blue); background: #f0f6ff; }
+
+  /* Generate button */
+  .gen-btn {
+    width: 100%; padding: 12px; background: var(--blue); color: var(--white);
+    border: none; border-radius: 8px; font-size: 15px; font-weight: 700;
+    cursor: pointer; margin-top: 12px; transition: background 0.2s;
+  }
+  .gen-btn:hover { background: #0b5ed7; }
+
+  .pdf-btn {
+    width: 100%; padding: 10px; background: var(--green); color: var(--white);
+    border: none; border-radius: 8px; font-size: 14px; font-weight: 700;
+    cursor: pointer; margin-top: 8px; transition: background 0.2s;
+  }
+  .pdf-btn:hover { background: #219a52; }
+
+  /* Save/Load configs */
+  .config-bar { margin-top: 6px; }
+  .config-bar select { width: 100%; padding: 7px 8px; border: 1.5px solid var(--border); border-radius: 6px; font-size: 12px; }
+  .config-actions {
+    display: flex; gap: 6px; margin-top: 8px;
+  }
+  .config-actions button {
+    flex: 1; padding: 7px 8px; border: 1.5px solid var(--border); border-radius: 6px;
+    font-size: 11px; font-weight: 600; cursor: pointer; background: var(--white); color: var(--dark);
+    transition: all 0.2s;
+  }
+  .config-actions button:hover { border-color: var(--blue); color: var(--blue); }
+  .config-actions button:last-child { flex: 0 0 auto; border-color: #f0c0c0; color: var(--red); }
+  .config-actions button:last-child:hover { border-color: var(--red); background: #fef0f0; }
+  .config-save-standalone {
+    width: 100%; margin-top: 8px; padding: 8px; border: 1.5px solid var(--border); border-radius: 6px;
+    font-size: 12px; font-weight: 600; cursor: pointer; background: var(--white); color: var(--dark);
+    transition: all 0.2s;
+  }
+  .config-save-standalone:hover { border-color: var(--blue); color: var(--blue); }
+  .save-dialog-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 1000;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .save-dialog {
+    background: var(--white); border-radius: 12px; padding: 24px; width: 380px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+  }
+  .save-dialog h3 { font-size: 16px; margin-bottom: 14px; color: var(--dark); }
+  .save-dialog .form-group { margin-bottom: 12px; }
+  .save-dialog .form-group label { font-size: 11px; font-weight: 600; color: var(--gray); text-transform: uppercase; display: block; margin-bottom: 3px; }
+  .save-dialog input[type="text"] { width: 100%; padding: 8px 10px; border: 1.5px solid var(--border); border-radius: 6px; font-size: 14px; }
+  .save-dialog .btn-row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+  .save-dialog .btn-row button { padding: 8px 18px; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .save-dialog .btn-save { background: var(--blue); color: var(--white); }
+  .save-dialog .btn-save:hover { background: #0b5ed7; }
+  .save-dialog .btn-cancel { background: #eee; color: var(--dark); }
+  .save-dialog .btn-cancel:hover { background: #ddd; }
+  .config-meta { font-size: 10px; color: var(--gray); margin-top: 4px; }
+  .config-delete { color: var(--red); cursor: pointer; font-size: 11px; margin-left: 4px; }
+  .config-delete:hover { text-decoration: underline; }
+
+  /* Output */
+  .output-area { min-height: 400px; }
+  .diagram-wrap { overflow-x: auto; margin-bottom: 16px; }
+
+  /* Summary table */
+  .sum-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 12px; }
+  .sum-table th { background: var(--dark); color: var(--white); padding: 8px 10px; text-align: center; font-size: 11px; }
+  .sum-table th:first-child { text-align: left; border-radius: 6px 0 0 0; }
+  .sum-table th:last-child { border-radius: 0 6px 0 0; }
+  .sum-table td { padding: 6px 10px; text-align: center; border-bottom: 1px solid #e8ecf0; font-size: 12px; }
+  .sum-table td:first-child { text-align: left; font-weight: 600; }
+  .sum-table tr:hover td { background: #f0f6ff; }
+  .sum-table .total-row td { background: #e8f4fd; font-weight: 700; border-top: 2px solid var(--blue); }
+  .sum-table .section-row td { background: #f0f4f8; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--gray); }
+
+  /* KPI strip */
+  .kpi-strip { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+  .kpi { background: var(--white); border-radius: 8px; box-shadow: var(--shadow); padding: 12px 16px; flex: 1; min-width: 120px; text-align: center; }
+  .kpi .val { font-size: 22px; font-weight: 800; color: var(--blue); }
+  .kpi .lbl { font-size: 10px; color: var(--gray); text-transform: uppercase; letter-spacing: 0.3px; margin-top: 2px; }
+
+  /* Print-only header */
+  .print-header {
+    display: none;
+  }
+
+  /* Print styles */
+  @media print {
+    body { background: #fff; }
+    .no-print { display: none !important; }
+    .print-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 0; margin-bottom: 12px; border-bottom: 2px solid #1a3a4a;
+    }
+    .print-header img { height: 44px; width: auto; }
+    .print-header .print-title { text-align: right; }
+    .print-header .print-title h2 { font-size: 16px; font-weight: 700; color: #1a3a4a; margin: 0; }
+    .print-header .print-title .print-subtitle { font-size: 11px; color: #666; margin: 0; }
+    .card { box-shadow: none; border: 1px solid #ddd; break-inside: avoid; }
+    .grid { grid-template-columns: 1fr; }
+    .container { max-width: 100%; padding: 10px; }
+    .print-page { break-before: page; }
+    .diagram-wrap svg { width: 100% !important; height: auto !important; max-height: 90vh; }
+    .kpi-strip { break-after: avoid; }
+  }
+  /* Save PNG button */
+  .save-png-btn {
+    position: absolute; top: 8px; right: 8px;
+    background: #0d6efd; color: #fff; border: none; border-radius: 6px;
+    padding: 5px 12px; font-size: 11px; font-weight: 600; cursor: pointer;
+    opacity: 0.8; transition: opacity 0.2s;
+  }
+  .save-png-btn:hover { opacity: 1; }
+  @media print { .save-png-btn { display: none !important; } }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</head>
+<body>
+
+<div class="header no-print">
+  <div style="display:flex;align-items:center;gap:16px;">
+    <img src="logo.png" alt="Pasadena Pools" style="height:40px;width:auto;">
+    <div>
+      <h1>Dig Sheet Generator</h1>
+      <div class="subtitle">Rectangular pool excavation calculator</div>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+<div class="grid">
+
+<!-- LEFT: INPUTS -->
+<div class="no-print">
+
+  <!-- Pool dimensions -->
+  <div class="card">
+    <h2>Pool Dimensions (Water)</h2>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Width (ft)</label>
+        <input type="number" id="poolWidth" value="20" min="4" max="60" step="0.5"
+          onchange="if(document.getElementById('coverBoxToggle').checked) updateCoverBoxDisplay()">
+      </div>
+      <div class="form-group">
+        <label>Length (ft)</label>
+        <input type="number" id="poolLength" value="40" min="8" max="100" step="0.5"
+          onchange="if(document.getElementById('divingToggle').checked) applyDivingEnvelope()">
+      </div>
+    </div>
+    <p style="font-size:11px; color:var(--gray); margin-top:4px;">Dig adds 1' each side → Dig width = water width + 2', Dig length = water length + 2'</p>
+  </div>
+
+  <!-- Build-up -->
+  <div class="card">
+    <h2>Build-Up Specs</h2>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Freeboard (in)</label>
+        <input type="number" id="freeboard" value="3" min="0" max="12" step="0.25">
+      </div>
+      <div class="form-group">
+        <label>Float Allowance (in)</label>
+        <input type="number" id="floatAllow" value="0.5" min="0" max="3" step="0.25">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Auto Cover Track (in)</label>
+        <input type="number" id="coverTrack" value="1.5" min="0" max="6" step="0.25">
+      </div>
+      <div class="form-group">
+        <label>Coping (in)</label>
+        <input type="number" id="coping" value="2.25" min="0" max="6" step="0.25">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Floor Concrete (in)</label>
+        <input type="number" id="floorConcrete" value="6" min="3" max="12" step="0.5">
+      </div>
+      <div class="form-group">
+        <label>Frost Footing Depth (in)</label>
+        <input type="number" id="footingDepth" value="30" min="12" max="48" step="1">
+      </div>
+    </div>
+    <div class="toggle-row">
+      <label class="toggle">
+        <input type="checkbox" id="gravelToggle">
+        <span class="slider"></span>
+      </label>
+      <span>Add gravel base</span>
+    </div>
+    <div id="gravelRow" style="display:none;" class="form-row">
+      <div class="form-group">
+        <label>Gravel Thickness (in)</label>
+        <input type="number" id="gravelThick" value="4" min="1" max="8" step="0.5">
+      </div>
+    </div>
+    <div style="background:#e8f4fd; border-radius:6px; padding:8px 12px; margin-top:8px;">
+      <span style="font-size:12px; font-weight:600; color:var(--dark);">Default dig offset: <span id="offsetDisplay">17"</span></span>
+      <span style="font-size:10px; color:var(--gray); display:block;">= freeboard + float + cover track + coping + floor concrete<span id="gravelNote"></span></span>
+    </div>
+  </div>
+
+  <!-- ═══ SHALLOW END ZONES ═══ -->
+  <div class="card" style="border-top: 3px solid var(--blue);">
+    <h2 style="color:var(--blue);">▸ Shallow End Zones <span style="font-size:10px;font-weight:400;text-transform:none;letter-spacing:0;">(entry → transition)</span></h2>
+    <div id="shallowZoneList"></div>
+    <button class="add-zone-btn" onclick="addShallowZone()">+ Add Shallow Zone</button>
+    <div style="margin-top:8px;text-align:right;font-size:11px;color:var(--gray);">
+      Shallow total: <strong id="shallowTotal">—</strong>
+    </div>
+  </div>
+
+  <!-- Gap/Overlap Indicator -->
+  <div id="gapIndicator" class="gap-indicator gap-ok" style="display:none;">
+    <span id="gapDisplay"></span>
+  </div>
+
+  <!-- ═══ DEEP END ZONES ═══ -->
+  <div class="card" style="border-top: 3px solid #8B4513;">
+    <h2 style="color:#8B4513;">▸ Deep End Zones <span style="font-size:10px;font-weight:400;text-transform:none;letter-spacing:0;">(from back wall → toward shallow)</span></h2>
+    <!-- Diving Board toggle -->
+    <div class="toggle-row">
+      <label class="toggle">
+        <input type="checkbox" id="divingToggle" onchange="toggleDiving()">
+        <span class="slider"></span>
+      </label>
+      <span>Pool has a diving board</span>
+    </div>
+    <div id="divingOptions" style="display:none;">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Pool Type (ANSI/APSP-5)</label>
+          <select id="divingType" onchange="if(document.getElementById('divingToggle').checked){const e=DIVING_ENVELOPE[this.value];if(e){document.getElementById('divingDepthB').value=e.depthB;document.getElementById('divingDepthB').min=e.depthB;}applyDivingEnvelope()}">
+            <option value="1">Type I — ≤23" above water</option>
+            <option value="2">Type II — 24–26" above water</option>
+            <option value="3">Type III — 26" above water</option>
+            <option value="4">Type IV — 30" above water</option>
+            <option value="5" selected>Type V — 30"+ above water</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Board Length</label>
+          <select id="boardLength">
+            <option value="10">10' Board</option>
+            <option value="8">8' Board</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row" style="margin-top:4px;">
+        <div class="form-group">
+          <label>Deepest Point — Pt B (inches)</label>
+          <input type="number" id="divingDepthB" value="108" min="36" max="240" step="1"
+            onchange="if(document.getElementById('divingToggle').checked) applyDivingEnvelope()">
+        </div>
+        <div class="form-group" style="flex:0 0 auto;align-self:end;">
+          <span id="divingDepthBDisplay" style="font-size:18px;font-weight:800;color:#8B4513;">9'-0"</span>
+        </div>
+      </div>
+      <div id="divingMinWarning" style="display:none;background:#fde8e8;border-radius:6px;padding:6px 10px;margin-top:4px;">
+        <span style="font-size:11px;color:var(--red);font-weight:600;" id="divingMinText"></span>
+      </div>
+      <div style="background:#e8f4fd; border-radius:6px; padding:8px 12px; margin-top:6px;">
+        <span style="font-size:11px; color:#0d6efd;" id="divingNote">All deep-end zones auto-calculate from your depth + ANSI/APSP/ICC-5 Table 1 minimums. Slope is locked at 1:3.</span>
+      </div>
+      <div id="divingSummary" style="background:#f8fafc; border-radius:6px; padding:8px 12px; margin-top:6px; font-size:11px; color:var(--dark);"></div>
+    </div>
+    <div id="deepZoneList" style="margin-top:10px;"></div>
+    <button class="add-zone-btn" onclick="addDeepZone()" id="addDeepBtn">+ Add Deep Zone</button>
+    <div style="margin-top:8px;text-align:right;font-size:11px;color:var(--gray);">
+      Deep total: <strong id="deepTotal">—</strong>
+    </div>
+  </div>
+
+  <!-- ═══ COVER BOX ═══ -->
+  <div class="card" style="border-top: 3px solid #6b7a8d;">
+    <h2 style="color:#6b7a8d;">▸ Cover Box <span style="font-size:10px;font-weight:400;text-transform:none;letter-spacing:0;">(auto pool cover housing behind deep wall)</span></h2>
+    <div class="toggle-row">
+      <label class="toggle">
+        <input type="checkbox" id="coverBoxToggle" onchange="toggleCoverBox()">
+        <span class="slider"></span>
+      </label>
+      <span>Pool has an automatic cover</span>
+    </div>
+    <div id="coverBoxOptions" style="display:none;">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Beam Thickness (in)</label>
+          <input type="number" id="beamThickness" value="10" min="6" max="18" step="0.5"
+            onchange="updateCoverBoxDisplay()">
+          <span style="font-size:10px;color:var(--gray);margin-top:2px;display:block;">Typical 8"–12". Measure your actual pool beam wall.</span>
+        </div>
+      </div>
+      <div id="coverBoxInfo" style="background:#f8fafc; border-radius:6px; padding:8px 12px; margin-top:6px; font-size:11px; color:var(--dark);"></div>
+      <div id="coverBoxWarning" style="display:none;background:#fde8e8;border-radius:6px;padding:6px 10px;margin-top:4px;">
+        <span style="font-size:11px;color:var(--red);font-weight:600;" id="coverBoxWarnText"></span>
+      </div>
+    </div>
+  </div>
+
+  <button class="gen-btn" onclick="generate()">Generate Dig Sheet</button>
+  <button class="pdf-btn" onclick="printPDF()">Print / Save PDF</button>
+
+  <!-- Save / Load Configurations -->
+  <div class="card" style="margin-top:12px; padding:14px 16px;">
+    <h2 style="font-size:12px; margin-bottom:8px;">Saved Configurations</h2>
+    <div class="config-bar">
+      <select id="configSelect" onchange="onConfigSelect()">
+        <option value="">— Select a saved config —</option>
+      </select>
+    </div>
+    <div id="configMeta" class="config-meta"></div>
+    <div id="configActions" class="config-actions" style="display:none;">
+      <button onclick="loadSelectedConfig()">📂 Load</button>
+      <button onclick="showSaveDialog()">💾 Save New Version</button>
+      <button onclick="deleteSelectedConfig()">✕ Delete</button>
+    </div>
+    <button class="config-save-standalone" onclick="showSaveDialog()">💾 Save Current Config</button>
+  </div>
+</div>
+
+<!-- RIGHT: OUTPUT -->
+<div class="output-area" id="outputArea">
+  <div class="card" style="text-align:center; padding:60px 20px; color:var(--gray);">
+    <p style="font-size:16px; font-weight:600;">Configure your pool and click "Generate Dig Sheet"</p>
+    <p style="font-size:12px; margin-top:8px;">Define shallow end zones (from entry) and deep end zones (from back wall)</p>
+  </div>
+</div>
+
+</div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════
+// TWO-SECTION DATA MODEL
+// ══════════════════════════════════════════════════
+// Shallow zones: ordered entry (left) → transition
+// Deep zones: ordered wall (right) → toward shallow
+// Profile rendering: shallow L→R, then deep REVERSED so it continues L→R to wall
+// ══════════════════════════════════════════════════
+
+let shallowZones = [
+  { id: 1, name: 'Entry Steps', type: 'steps', waterDepth: 4, length: 1.5, offsetOverride: null, slopeMode: 'length', slopeRatio: 3, maximize: false, stairRise: 10, stairRun: 12, divingLocked: false, divingOverride: false },
+  { id: 2, name: 'Baja Shelf', type: 'shelf', waterDepth: 10, length: 6, offsetOverride: null, slopeMode: 'length', slopeRatio: 3, maximize: false, stairRise: 10, stairRun: 12, divingLocked: false, divingOverride: false },
+  { id: 3, name: 'Stairs', type: 'stairs', waterDepth: 0, length: 0, offsetOverride: null, slopeMode: 'length', slopeRatio: 3, maximize: false, stairRise: 10, stairRun: 12, divingLocked: false, divingOverride: false },
+  { id: 4, name: 'Shallow End', type: 'flat', waterDepth: 48, length: 8, offsetOverride: null, slopeMode: 'length', slopeRatio: 3, maximize: true, stairRise: 10, stairRun: 12, divingLocked: false, divingOverride: false },
+];
+
+let deepZones = [
+  { id: 101, name: 'Deep End', type: 'flat', waterDepth: 96, length: 10, offsetOverride: null, slopeMode: 'length', slopeRatio: 3, maximize: false, stairRise: 10, stairRun: 12, divingLocked: false, divingOverride: false },
+  { id: 102, name: 'Transition Slope', type: 'slope', waterDepth: 0, length: 10, offsetOverride: null, slopeMode: 'length', slopeRatio: 3, maximize: false, stairRise: 10, stairRun: 12, divingLocked: false, divingOverride: false },
+];
+
+// Save user's deep-end zones when diving takes over
+let savedDeepZones = [];
+let nextId = 200;
+
+const ZONE_TYPES = [
+  { value: 'steps', label: 'Entry Steps' },
+  { value: 'shelf', label: 'Baja Shelf' },
+  { value: 'flat', label: 'Flat Section' },
+  { value: 'stairs', label: 'Stairs (auto-calc)' },
+  { value: 'slope', label: 'Slope/Transition' },
+  { value: 'bench', label: 'Bench/Seat' },
+];
+
+// ── Cover-Pools Save-T® 3 Box Dimensions (Underside Track) ──
+// M = motor end extension, O = opposite end, T = throat min, D = depth, W = width behind beam
+const COVER_BOX_SPEC = {
+  label: 'Save-T® 3 Underside Track',
+  maxLenFt: 55, maxWidFt: 24,
+  M: 32, O: 10, bRange: [8, 12], T: 2, D: 16, W: 14
+};
+
+function getCoverBoxSpec() {
+  if (!document.getElementById('coverBoxToggle').checked) return null;
+  const poolW = parseFloat(document.getElementById('poolWidth').value) || 20;
+  const poolL = parseFloat(document.getElementById('poolLength').value) || 40;
+  const beamB = parseFloat(document.getElementById('beamThickness').value) || 10;
+  const spec = COVER_BOX_SPEC;
+  const W = poolL > 45 ? 16 : spec.W; // wider box for pools over 45'
+  const valid = poolL <= spec.maxLenFt && poolW <= spec.maxWidFt;
+  const poolLenInches = poolL * 12;
+  const totalBoxLen = poolLenInches + spec.M + spec.O;
+  const totalDigW = beamB + W;
+  return {
+    label: spec.label, valid, poolW, poolL,
+    M: spec.M, O: spec.O, T: spec.T, D: spec.D, W, B: beamB,
+    totalBoxLen, totalDigW,
+    maxLenFt: spec.maxLenFt, maxWidFt: spec.maxWidFt,
+    bRange: spec.bRange
+  };
+}
+
+// ── Diving Envelope Data (ANSI/APSP/ICC-5 2011 Table 1) ──
+// All depths/widths in inches, lengths in feet. D=2'9"(33") for all types per standard.
+const DIVING_ENVELOPE = {
+  1: {
+    label: "Type I — ≤23\" above water",
+    depthA: 72, depthB: 90, depthC: 60, depthD: 33,
+    widthA: 120, widthB: 144, widthC: 120, widthD: 96,
+    lenWA: 1.5, lenAB: 7, lenBC: 7.5, lenDE: 6
+  },
+  2: {
+    label: "Type II — 24–26\" above water",
+    depthA: 72, depthB: 96, depthC: 60, depthD: 33,
+    widthA: 144, widthB: 180, widthC: 144, widthD: 96,
+    lenWA: 1.5, lenAB: 7, lenBC: 7.5, lenDE: 6
+  },
+  3: {
+    label: "Type III — 26\" above water",
+    depthA: 82, depthB: 96, depthC: 60, depthD: 33,
+    widthA: 144, widthB: 180, widthC: 144, widthD: 96,
+    lenWA: 2, lenAB: 7.5, lenBC: 9, lenDE: 6
+  },
+  4: {
+    label: "Type IV — 30\" above water",
+    depthA: 92, depthB: 102, depthC: 60, depthD: 33,
+    widthA: 180, widthB: 216, widthC: 180, widthD: 108,
+    lenWA: 2.5, lenAB: 8, lenBC: 10.5, lenDE: 6
+  },
+  5: {
+    label: "Type V — 30\"+ above water",
+    depthA: 102, depthB: 108, depthC: 60, depthD: 33,
+    widthA: 180, widthB: 216, widthC: 180, widthD: 108,
+    lenWA: 3, lenAB: 9, lenBC: 12, lenDE: 6
+  }
+};
+
+// ══════════════════════════════════════════════════
+// BUILD-UP / OFFSET
+// ══════════════════════════════════════════════════
+
+function getDefaultOffset() {
+  const fb = parseFloat(document.getElementById('freeboard').value) || 0;
+  const fl = parseFloat(document.getElementById('floatAllow').value) || 0;
+  const ct = parseFloat(document.getElementById('coverTrack').value) || 0;
+  const co = parseFloat(document.getElementById('coping').value) || 0;
+  const fc = parseFloat(document.getElementById('floorConcrete').value) || 0;
+  const gravel = document.getElementById('gravelToggle').checked;
+  const gt = gravel ? (parseFloat(document.getElementById('gravelThick').value) || 0) : 0;
+  return { above: fb + fl + ct + co, below: fc + gt, total: fb + fl + ct + co + fc + gt, gravel: gt };
+}
+
+function updateOffsetDisplay() {
+  const o = getDefaultOffset();
+  document.getElementById('offsetDisplay').textContent = o.total.toFixed(1) + '"';
+  document.getElementById('gravelNote').textContent = o.gravel > 0 ? ' + gravel' : '';
+  document.getElementById('gravelRow').style.display = document.getElementById('gravelToggle').checked ? '' : 'none';
+}
+
+// ══════════════════════════════════════════════════
+// ZONE RENDERING (shared for both sections)
+// ══════════════════════════════════════════════════
+
+function renderZoneList(zones, containerId, section) {
+  const list = document.getElementById(containerId);
+  const dis = (z) => z.divingLocked && !z.divingOverride ? 'disabled' : '';
+
+  list.innerHTML = zones.map((z, i) => {
+    const isDive = z.divingLocked;
+
+    // Diving zones: compact read-only display
+    if (isDive) {
+      return `
+      <div class="zone-item zone-locked" data-id="${z.id}">
+        <div class="zone-header">
+          <span class="zone-name">${i + 1}. ${z.name} <span class="dive-badge">AUTO</span></span>
+        </div>
+        ${z.divingNote ? `<div style="font-size:10px;color:#0d6efd;padding:2px 8px;background:#e8f4fd;border-radius:4px;">${z.divingNote}</div>` : ''}
+        <div style="font-size:11px;color:var(--gray);margin-top:4px;">
+          ${z.type === 'slope' ? `Slope ${z.length}' long` : `${fmtIn(z.waterDepth)} deep × ${z.length}' long`}
+        </div>
+      </div>`;
+    }
+
+    return `
+    <div class="zone-item" data-id="${z.id}">
+      <div class="zone-header">
+        <span class="zone-name">${i + 1}. ${z.name}</span>
+        <div class="zone-actions">
+          ${i > 0 ? `<button class="zone-btn up" onclick="moveZone('${section}',${z.id},-1)" title="Move up">↑</button>` : ''}
+          ${i < zones.length - 1 ? `<button class="zone-btn down" onclick="moveZone('${section}',${z.id},1)" title="Move down">↓</button>` : ''}
+          <button class="zone-btn del" onclick="removeZone('${section}',${z.id})" title="Remove">×</button>
+        </div>
+      </div>
+      <div class="zone-fields">
+        <div class="form-group">
+          <label>Zone Type</label>
+          <select ${dis(z)} onchange="updateZone('${section}',${z.id},'type',this.value);updateZoneName('${section}',${z.id},this)">
+            ${ZONE_TYPES.map(t => `<option value="${t.value}" ${t.value === z.type ? 'selected' : ''}>${t.label}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Name</label>
+          <input type="text" value="${z.name}" ${dis(z)} onchange="updateZone('${section}',${z.id},'name',this.value)">
+        </div>
+        ${z.type === 'stairs' ? `
+        <div class="form-group">
+          <label>Rise per Step (in)</label>
+          <input type="number" value="${z.stairRise}" min="4" max="14" step="0.5" ${dis(z)} onchange="updateZone('${section}',${z.id},'stairRise',parseFloat(this.value));renderAllZones()">
+        </div>
+        <div class="form-group">
+          <label>Run per Step (in)</label>
+          <input type="number" value="${z.stairRun}" min="8" max="24" step="1" ${dis(z)} onchange="updateZone('${section}',${z.id},'stairRun',parseFloat(this.value));renderAllZones()">
+        </div>
+        <div style="grid-column:span 2;background:#e8f4fd;border-radius:6px;padding:6px 10px;font-size:11px;color:var(--dark);">
+          ${(() => {
+            const idx = zones.indexOf(z);
+            const prevZ = idx > 0 ? zones[idx - 1] : null;
+            const nextZ = idx < zones.length - 1 ? zones[idx + 1] : null;
+            if (!prevZ || !nextZ) return '<em>Add zones before & after stairs</em>';
+            const totalRise = Math.abs(nextZ.waterDepth - prevZ.waterDepth);
+            const numSteps = Math.ceil(totalRise / z.stairRise);
+            const actualRise = numSteps > 0 ? (totalRise / numSteps).toFixed(1) : 0;
+            const totalRun = (numSteps * z.stairRun / 12).toFixed(1);
+            const suggested = suggestStairRise(totalRise);
+            const sugSteps = Math.round(totalRise / suggested);
+            const isEven = Math.abs(totalRise - numSteps * z.stairRise) < 0.01;
+            let out = '<strong>' + numSteps + ' steps</strong> × ' + actualRise + '" rise × ' + z.stairRun + '" run = <strong>' + totalRun + "' total length</strong> | Height: " + fmtIn(totalRise);
+            if (!isEven && z.stairRise !== suggested) {
+              out += '<br><span style="color:#e67e22;font-weight:600;">💡 Suggest ' + suggested + '" rise → ' + sugSteps + ' even steps</span> ';
+              out += '<button style="font-size:10px;padding:1px 6px;border:1px solid #e67e22;border-radius:4px;background:#fff7ed;cursor:pointer;" onclick="updateZone(\'' + section + '\',' + z.id + ',\'stairRise\',' + suggested + ');renderAllZones()">Apply</button>';
+            } else if (isEven) {
+              out += ' <span style="color:#27ae60;">✓ even steps</span>';
+            }
+            return out;
+          })()}
+        </div>` : z.type === 'slope' ? `
+        <div class="form-group">
+          <label>Slope Mode</label>
+          <select ${dis(z)} onchange="updateZone('${section}',${z.id},'slopeMode',this.value);renderAllZones()">
+            <option value="length" ${z.slopeMode === 'length' ? 'selected' : ''}>Specify Length</option>
+            <option value="ratio" ${z.slopeMode === 'ratio' ? 'selected' : ''}>Specify Ratio</option>
+          </select>
+        </div>` : `
+        <div class="form-group">
+          <label>Water Depth (in)</label>
+          <input type="number" value="${z.waterDepth}" min="0" max="240" step="4" ${dis(z)} onchange="updateZone('${section}',${z.id},'waterDepth',parseFloat(this.value))">
+        </div>`}
+        ${z.type === 'slope' && z.slopeMode === 'ratio' ? `
+        <div class="form-group">
+          <label>Ratio (1:X)</label>
+          <input type="number" value="${z.slopeRatio}" min="1" max="10" step="0.5" ${dis(z)} onchange="updateZone('${section}',${z.id},'slopeRatio',parseFloat(this.value))">
+        </div>` : `
+        <div class="form-group">
+          <label>Length (ft) ${z.maximize ? '<span style="color:var(--green);font-weight:700;"> ✓ AUTO</span>' : ''}</label>
+          <input type="number" value="${z.maximize ? '—' : z.length}" min="0.5" max="60" step="0.5"
+            ${z.maximize ? 'disabled style="background:#e8f8e8;color:var(--green);font-weight:700;"' : dis(z)}
+            onchange="updateZone('${section}',${z.id},'length',parseFloat(this.value))">
+        </div>`}
+        <div class="form-group">
+          <label>Dig Offset Override (in)</label>
+          <input type="number" value="${z.offsetOverride !== null ? z.offsetOverride : ''}" placeholder="Def: ${getDefaultOffset().total.toFixed(1)}" min="0" max="48" step="0.5"
+            ${dis(z)} onchange="updateZone('${section}',${z.id},'offsetOverride', this.value === '' ? null : parseFloat(this.value))">
+        </div>
+        ${!isDive && section === 'shallow' ? `
+        <div class="form-group">
+          <label style="display:flex;align-items:center;gap:4px;">
+            <input type="checkbox" ${z.maximize ? 'checked' : ''} onchange="setMaximize(${z.id}, this.checked)"> Maximize (auto-fill remaining)
+          </label>
+        </div>` : ''}
+      </div>
+    </div>
+  `}).join('');
+}
+
+function renderAllZones() {
+  renderZoneList(shallowZones, 'shallowZoneList', 'shallow');
+  renderZoneList(deepZones, 'deepZoneList', 'deep');
+  updateSectionTotals();
+}
+
+function updateSectionTotals() {
+  const poolL = parseFloat(document.getElementById('poolLength').value) || 40;
+  const sTotal = calcSectionLength(shallowZones);
+  const dTotal = calcSectionLength(deepZones);
+  document.getElementById('shallowTotal').textContent = sTotal.toFixed(1) + "'";
+  document.getElementById('deepTotal').textContent = dTotal.toFixed(1) + "'";
+
+  const gap = poolL - sTotal - dTotal;
+  const indicator = document.getElementById('gapIndicator');
+  const display = document.getElementById('gapDisplay');
+
+  // Check if shallow has a maximize zone
+  const hasMax = shallowZones.some(z => z.maximize);
+
+  if (hasMax) {
+    indicator.style.display = 'block';
+    indicator.className = 'gap-indicator gap-exact';
+    display.innerHTML = '↕ Shallow "maximize" zone will auto-fill the gap';
+  } else if (Math.abs(gap) < 0.1) {
+    indicator.style.display = 'block';
+    indicator.className = 'gap-indicator gap-exact';
+    display.innerHTML = '✓ Sections meet exactly at ' + poolL + "'";
+  } else if (gap > 0) {
+    indicator.style.display = 'block';
+    indicator.className = 'gap-indicator gap-ok';
+    display.innerHTML = '↔ ' + gap.toFixed(1) + "' gap — auto-transition slope will connect sections";
+  } else {
+    indicator.style.display = 'block';
+    indicator.className = 'gap-indicator gap-over';
+    display.innerHTML = '⚠ OVERLAP by ' + Math.abs(gap).toFixed(1) + "' — reduce zone lengths!";
+  }
+}
+
+function calcSectionLength(zones) {
+  let total = 0;
+  zones.forEach((z, i) => {
+    if (z.maximize) return; // skip — will be auto-filled
+    if (z.type === 'stairs') {
+      const prevZ = i > 0 ? zones[i - 1] : null;
+      const nextZ = i < zones.length - 1 ? zones[i + 1] : null;
+      if (prevZ && nextZ) {
+        const rise = Math.abs(nextZ.waterDepth - prevZ.waterDepth);
+        const numSteps = Math.max(1, Math.ceil(rise / z.stairRise));
+        total += (numSteps * z.stairRun) / 12;
+      }
+    } else if (z.type === 'slope' && z.slopeMode === 'ratio') {
+      const prevZ = i > 0 ? zones[i - 1] : null;
+      const nextZ = i < zones.length - 1 ? zones[i + 1] : null;
+      if (prevZ && nextZ) {
+        const rise = Math.abs(nextZ.waterDepth - prevZ.waterDepth);
+        total += (rise * z.slopeRatio) / 12;
+      }
+    } else {
+      total += z.length;
+    }
+  });
+  return total;
+}
+
+// ══════════════════════════════════════════════════
+// ZONE MANAGEMENT
+// ══════════════════════════════════════════════════
+
+function getZoneArray(section) {
+  return section === 'shallow' ? shallowZones : deepZones;
+}
+
+function updateZone(section, id, field, value) {
+  const arr = getZoneArray(section);
+  const z = arr.find(z => z.id === id);
+  if (z) z[field] = value;
+  updateSectionTotals();
+}
+
+function updateZoneName(section, id, sel) {
+  const arr = getZoneArray(section);
+  const z = arr.find(z => z.id === id);
+  if (z) { z.name = sel.options[sel.selectedIndex].text; renderAllZones(); }
+}
+
+function addShallowZone() {
+  shallowZones.push({
+    id: nextId++, name: 'Flat Section', type: 'flat', waterDepth: 48, length: 6,
+    offsetOverride: null, slopeMode: 'length', slopeRatio: 3, maximize: false,
+    stairRise: 10, stairRun: 12, divingLocked: false, divingOverride: false
+  });
+  renderAllZones();
+}
+
+function addDeepZone() {
+  // Add at the end (closest to shallow/transition)
+  deepZones.push({
+    id: nextId++, name: 'Flat Section', type: 'flat', waterDepth: 72, length: 6,
+    offsetOverride: null, slopeMode: 'length', slopeRatio: 3, maximize: false,
+    stairRise: 10, stairRun: 12, divingLocked: false, divingOverride: false
+  });
+  renderAllZones();
+}
+
+function removeZone(section, id) {
+  if (section === 'shallow') {
+    shallowZones = shallowZones.filter(z => z.id !== id);
+  } else {
+    deepZones = deepZones.filter(z => z.id !== id);
+  }
+  renderAllZones();
+}
+
+function moveZone(section, id, dir) {
+  const arr = getZoneArray(section);
+  const i = arr.findIndex(z => z.id === id);
+  if (i + dir < 0 || i + dir >= arr.length) return;
+  [arr[i], arr[i + dir]] = [arr[i + dir], arr[i]];
+  renderAllZones();
+}
+
+function setMaximize(id, checked) {
+  shallowZones.forEach(z => z.maximize = false);
+  const z = shallowZones.find(z => z.id === id);
+  if (z) z.maximize = checked;
+  renderAllZones();
+}
+
+// ══════════════════════════════════════════════════
+// DIVING ENVELOPE
+// ══════════════════════════════════════════════════
+
+function toggleDiving() {
+  const on = document.getElementById('divingToggle').checked;
+  document.getElementById('divingOptions').style.display = on ? '' : 'none';
+  document.getElementById('addDeepBtn').style.display = on ? 'none' : '';
+  if (on) {
+    // Set depth input to ANSI minimum for selected type
+    const dt = parseInt(document.getElementById('divingType').value);
+    const env = DIVING_ENVELOPE[dt];
+    if (env) {
+      const depthInput = document.getElementById('divingDepthB');
+      depthInput.value = env.depthB;
+      depthInput.min = env.depthB;
+      document.getElementById('divingDepthBDisplay').textContent = fmtIn(env.depthB);
+    }
+    applyDivingEnvelope();
+  } else {
+    removeDivingEnvelope();
+  }
+}
+
+function applyDivingEnvelope() {
+  const dt = parseInt(document.getElementById('divingType').value);
+  const env = DIVING_ENVELOPE[dt];
+  if (!env) return;
+
+  // Save user's deep zones on first toggle
+  if (savedDeepZones.length === 0 && deepZones.some(z => !z.divingLocked)) {
+    savedDeepZones = deepZones.filter(z => !z.divingLocked).map(z => ({...z}));
+  }
+
+  // ── User-controlled depth (Pt B) ──
+  const depthInput = document.getElementById('divingDepthB');
+  let userDepthB = parseInt(depthInput.value) || env.depthB;
+
+  // Enforce ANSI minimum
+  const warn = document.getElementById('divingMinWarning');
+  if (userDepthB < env.depthB) {
+    warn.style.display = 'block';
+    document.getElementById('divingMinText').textContent =
+      `Minimum depth for ${env.label} is ${fmtIn(env.depthB)}. Using minimum.`;
+    userDepthB = env.depthB;
+  } else {
+    warn.style.display = 'none';
+  }
+
+  // Update display
+  document.getElementById('divingDepthBDisplay').textContent = fmtIn(userDepthB);
+
+  // ── Compute all derived values from userDepthB + ANSI table ──
+  // Wall depth: 2'9" (33") standard — pool wall behind diving board
+  const wallDepth = 33;
+  // depthA: ANSI minimum at Point A (tip of board projection)
+  const depthA = env.depthA;
+
+  // D→E floor depth: match shallow end depth, but no shallower than ANSI depthD
+  const lastShallow = shallowZones[shallowZones.length - 1];
+  const deDepth = lastShallow ? Math.max(env.depthD, lastShallow.waterDepth || env.depthD) : env.depthD;
+
+  // W→A slope: from wall (33") down to depthA over ANSI minimum distance
+  const waLen = env.lenWA;
+  const waRise = depthA - wallDepth;
+  const waSlopeRatio = waRise > 0 ? parseFloat(((waLen * 12) / waRise).toFixed(1)) : 0;
+
+  // Hopper A→B (going deeper): NO slope constraint per ANSI.
+  const hopperLen = env.lenAB;
+  const abRise = userDepthB - depthA;
+  const abSlopeRatio = abRise > 0 ? parseFloat(((hopperLen * 12) / abRise).toFixed(1)) : 0;
+
+  // B→C→D slope (upslope toward shallow end): locked at max 1:3
+  const bdRise = userDepthB - deDepth;
+  const slopeLen = parseFloat(Math.max(env.lenBC, (bdRise * 3) / 12).toFixed(1));
+
+  // D→E length: ANSI minimum
+  const deLen = env.lenDE;
+
+  // Total deep end length
+  const deepTotal = waLen + hopperLen + 1 + slopeLen + deLen;
+
+  // ── Ensure shallow section has maximize ON ──
+  if (!shallowZones.some(z => z.maximize)) {
+    // Auto-enable maximize on last non-slope/non-stair shallow zone
+    for (let i = shallowZones.length - 1; i >= 0; i--) {
+      if (shallowZones[i].type !== 'slope' && shallowZones[i].type !== 'stairs') {
+        shallowZones[i].maximize = true;
+        break;
+      }
+    }
+  }
+
+  // ── Build deep zones ──
+  deepZones = [];
+
+  // W→A: slope from wall depth (2'9" = 33") down to depthA
+  // Uses _startDepth/_endDepth so resolveSection knows the explicit depths
+  deepZones.push({
+    id: nextId++, name: 'Wall Slope (W→A)', type: 'slope',
+    waterDepth: depthA, length: waLen,
+    _startDepth: wallDepth, _endDepth: depthA,
+    offsetOverride: null, slopeMode: 'length', slopeRatio: 3,
+    maximize: false, stairRise: 10, stairRun: 12,
+    divingLocked: true, divingOverride: false,
+    divingNote: `${fmtIn(wallDepth)} → ${fmtIn(depthA)} over ${waLen}' — wall to Pt A, slope 1:${waSlopeRatio}`
+  });
+
+  // A→B: hopper slope from depthA down to userDepthB
+  deepZones.push({
+    id: nextId++, name: 'Hopper (A→B)', type: 'slope',
+    waterDepth: 0, length: hopperLen,
+    offsetOverride: null, slopeMode: 'length', slopeRatio: 3,
+    maximize: false, stairRise: 10, stairRun: 12,
+    divingLocked: true, divingOverride: false,
+    divingNote: `${fmtIn(depthA)} → ${fmtIn(userDepthB)} over ${hopperLen}' — hopper slope 1:${abSlopeRatio} (Pts A→B, no max slope req.)`
+  });
+
+  deepZones.push({
+    id: nextId++, name: 'Deepest (B)', type: 'flat',
+    waterDepth: userDepthB, length: 1,
+    offsetOverride: null, slopeMode: 'length', slopeRatio: 3,
+    maximize: false, stairRise: 10, stairRun: 12,
+    divingLocked: true, divingOverride: false,
+    divingNote: `${fmtIn(userDepthB)} deep — deepest point of hopper (Pt B)`
+  });
+
+  deepZones.push({
+    id: nextId++, name: 'Slope (B→C→D)', type: 'slope',
+    waterDepth: 0, length: slopeLen,
+    offsetOverride: null, slopeMode: 'length', slopeRatio: 3,
+    maximize: false, stairRise: 10, stairRun: 12,
+    divingLocked: true, divingOverride: false,
+    divingNote: `${fmtIn(userDepthB)} → ${fmtIn(deDepth)} over ${slopeLen}' at 1:3 slope (Pts B→C→D)`
+  });
+
+  deepZones.push({
+    id: nextId++, name: 'Dive Floor (D→E)', type: 'flat',
+    waterDepth: deDepth, length: deLen,
+    offsetOverride: null, slopeMode: 'length', slopeRatio: 3,
+    maximize: false, stairRise: 10, stairRun: 12,
+    divingLocked: true, divingOverride: false,
+    divingNote: `${fmtIn(deDepth)} deep × ${deLen}' — envelope transition floor (Pts D→E)`
+  });
+
+  // ── Summary readout ──
+  const poolL = parseFloat(document.getElementById('poolLength').value) || 40;
+  const remaining = poolL - deepTotal;
+  document.getElementById('divingSummary').innerHTML =
+    `<strong>Deep end: ${deepTotal.toFixed(1)}'</strong> ` +
+    `(Wall @${fmtIn(wallDepth)} → W→A ${waLen}' [1:${waSlopeRatio}] to ${fmtIn(depthA)} + A→B ${hopperLen}' [1:${abSlopeRatio}] + B 1' + B→D ${slopeLen}' [1:3] + D→E ${deLen}')` +
+    `<br><strong style="color:${remaining > 0 ? 'var(--green)' : 'var(--red)'};">` +
+    `${remaining > 0 ? remaining.toFixed(1) + "' remaining" : Math.abs(remaining).toFixed(1) + "' OVER — increase pool length!"} for shallow end</strong>`;
+
+  document.getElementById('addDeepBtn').style.display = 'none';
+  renderAllZones();
+}
+
+function removeDivingEnvelope() {
+  deepZones = [];
+  if (savedDeepZones.length > 0) {
+    deepZones = savedDeepZones.map(z => ({...z, id: nextId++}));
+    savedDeepZones = [];
+  } else {
+    // Provide default deep zones
+    deepZones = [
+      { id: nextId++, name: 'Deep End', type: 'flat', waterDepth: 96, length: 10, offsetOverride: null, slopeMode: 'length', slopeRatio: 3, maximize: false, stairRise: 10, stairRun: 12, divingLocked: false, divingOverride: false },
+      { id: nextId++, name: 'Transition Slope', type: 'slope', waterDepth: 0, length: 10, offsetOverride: null, slopeMode: 'length', slopeRatio: 3, maximize: false, stairRise: 10, stairRun: 12, divingLocked: false, divingOverride: false },
+    ];
+  }
+  document.getElementById('addDeepBtn').style.display = '';
+  renderAllZones();
+}
+
+// Override/relock removed — depth input drives all diving zones automatically
+
+// ══════════════════════════════════════════════════
+// COVER BOX
+// ══════════════════════════════════════════════════
+
+function toggleCoverBox() {
+  const on = document.getElementById('coverBoxToggle').checked;
+  document.getElementById('coverBoxOptions').style.display = on ? '' : 'none';
+  if (on) updateCoverBoxDisplay();
+}
+
+function updateCoverBoxDisplay() {
+  const spec = getCoverBoxSpec();
+  if (!spec) return;
+  const info = document.getElementById('coverBoxInfo');
+  const warn = document.getElementById('coverBoxWarning');
+
+  if (!spec.valid) {
+    warn.style.display = 'block';
+    document.getElementById('coverBoxWarnText').textContent =
+      `Pool exceeds Save-T® 3 max (${spec.maxLenFt}' × ${spec.maxWidFt}'). Contact Cover-Pools for larger pool specs.`;
+  } else {
+    warn.style.display = 'none';
+  }
+
+  const beamOk = spec.B >= spec.bRange[0] && spec.B <= spec.bRange[1];
+  info.innerHTML =
+    `<strong>${spec.label}</strong><br>` +
+    `<strong>M:</strong> ${fmtIn(spec.M)} motor &nbsp;|&nbsp; <strong>O:</strong> ${fmtIn(spec.O)} opposite &nbsp;|&nbsp; <strong>D:</strong> ${fmtIn(spec.D)} depth &nbsp;|&nbsp; <strong>W:</strong> ${fmtIn(spec.W)} width` +
+    `<br><strong>Total box:</strong> ${fmtIn(spec.totalBoxLen)} long × ${fmtIn(spec.totalDigW)} wide (B+W)` +
+    `<br><span style="color:${beamOk ? 'var(--gray)' : 'var(--orange)'};font-size:10px;">${beamOk ? '✓' : '⚠'} Beam: ${spec.B}" ${beamOk ? '(typical range)' : '(outside typical ' + spec.bRange[0] + '"–' + spec.bRange[1] + '")'}</span>`;
+}
+
+// ══════════════════════════════════════════════════
+// CALCULATION ENGINE (two-section)
+// ══════════════════════════════════════════════════
+
+function resolveSection(zones, defaults, boundaryDepth, footingDepth) {
+  // boundaryDepth: depth of the adjacent section's boundary zone.
+  // Used when the last zone is a slope with no next neighbor.
+
+  // Pre-calc stair lengths
+  const stairData = {};
+  zones.forEach((z, i) => {
+    if (z.type === 'stairs') {
+      const prevDepth = i > 0 ? zones[i - 1].waterDepth : 0;
+      const nextDepth = i < zones.length - 1 ? zones[i + 1].waterDepth
+        : (boundaryDepth != null ? boundaryDepth : prevDepth);
+      const totalRise = Math.abs(nextDepth - prevDepth);
+      const numSteps = Math.max(1, Math.ceil(totalRise / z.stairRise));
+      const runFt = (numSteps * z.stairRun) / 12;
+      stairData[z.id] = { numSteps, totalRise, runFt, actualRise: totalRise / numSteps };
+    }
+  });
+
+  // Helper: get the "next" depth for a zone at index i
+  function getNextDepth(i) {
+    if (i < zones.length - 1) return zones[i + 1].waterDepth;
+    return boundaryDepth != null ? boundaryDepth : (i > 0 ? zones[i - 1].waterDepth : 0);
+  }
+
+  // Compute lengths (no maximize here — that's handled at combine time)
+  const lengths = zones.map((z, i) => {
+    if (z.maximize) return 0;
+    if (z.type === 'stairs') return stairData[z.id]?.runFt || 0;
+    if (z.type === 'slope' && z.slopeMode === 'ratio') {
+      const prevDepth = i > 0 ? zones[i - 1].waterDepth : 0;
+      const nextDepth = getNextDepth(i);
+      const rise = Math.abs(nextDepth - prevDepth);
+      return (rise * z.slopeRatio) / 12;
+    }
+    return z.length;
+  });
+
+  const resolved = [];
+  for (let i = 0; i < zones.length; i++) {
+    const z = zones[i];
+    const offset = z.offsetOverride !== null ? z.offsetOverride : defaults.total;
+    let zoneLenFt = lengths[i];
+
+    if (z.type === 'stairs') {
+      const sd = stairData[z.id];
+      if (sd) {
+        const prevDepth = i > 0 ? zones[i - 1].waterDepth : 0;
+        const nextDepth = getNextDepth(i);
+        // Preserve actual direction: prev→next
+        resolved.push({
+          name: z.name, type: 'stairs',
+          waterDepthStart: prevDepth, waterDepthEnd: nextDepth,
+          digDepthStart: prevDepth + offset, digDepthEnd: nextDepth + offset,
+          lengthFt: sd.runFt, offset,
+          slopeRatio: '—', slopeRise: sd.totalRise,
+          numSteps: sd.numSteps, actualRise: sd.actualRise,
+          stairRun: z.stairRun, maximize: z.maximize
+        });
+      }
+    } else if (z.type === 'slope') {
+      // _startDepth/_endDepth: explicit overrides for diving zones (first zone at wall)
+      const prevDepth = z._startDepth != null ? z._startDepth
+                        : (i > 0 ? zones[i - 1].waterDepth : 0);
+      const nextDepth = z._endDepth != null ? z._endDepth
+                        : getNextDepth(i);
+      const rise = Math.abs(nextDepth - prevDepth);
+      const runFt = zoneLenFt;
+      const ratio = rise > 0 ? (runFt * 12 / rise) : 0;
+      // Preserve actual direction: prev→next
+      resolved.push({
+        name: z.name, type: 'slope',
+        waterDepthStart: prevDepth, waterDepthEnd: nextDepth,
+        digDepthStart: prevDepth + offset, digDepthEnd: nextDepth + offset,
+        lengthFt: runFt, offset,
+        slopeRatio: ratio.toFixed(1), slopeRise: rise, maximize: z.maximize
+      });
+    } else {
+      const digDepth = z.waterDepth + offset;
+      resolved.push({
+        name: z.name, type: z.type,
+        waterDepthStart: z.waterDepth, waterDepthEnd: z.waterDepth,
+        digDepthStart: digDepth, digDepthEnd: digDepth,
+        lengthFt: zoneLenFt, offset,
+        slopeRatio: '—', slopeRise: 0, maximize: z.maximize
+      });
+    }
+  }
+
+  // Enforce frost footing minimum: no dig depth less than footing depth
+  if (footingDepth > 0) {
+    for (const r of resolved) {
+      if (r.digDepthStart < footingDepth) r.digDepthStart = footingDepth;
+      if (r.digDepthEnd < footingDepth) r.digDepthEnd = footingDepth;
+    }
+  }
+
+  return resolved;
+}
+
+function calculate() {
+  const poolW = parseFloat(document.getElementById('poolWidth').value) || 20;
+  const poolL = parseFloat(document.getElementById('poolLength').value) || 40;
+  const defaults = getDefaultOffset();
+  const footingDepth = parseFloat(document.getElementById('footingDepth').value) || 30;
+
+  const digW = poolW + 2;
+  const digL = poolL + 2;
+
+  // Resolve shallow first, then deep with boundary depth
+  let shallowResolved = resolveSection(shallowZones, defaults, undefined, footingDepth);
+  // Last shallow zone's effective end depth = boundary for deep section's last zone
+  const lastShallowEndDepth = shallowResolved.length > 0
+    ? shallowResolved[shallowResolved.length - 1].waterDepthEnd : 0;
+  const deepResolved = resolveSection(deepZones, defaults, lastShallowEndDepth, footingDepth);
+
+  // Deep section lengths
+  const deepTotal = deepResolved.reduce((s, r) => s + r.lengthFt, 0);
+
+  // Handle maximize in shallow section
+  const shallowNonMaxTotal = shallowResolved.filter(r => !r.maximize).reduce((s, r) => s + r.lengthFt, 0);
+  const maxIdx = shallowResolved.findIndex(r => r.maximize);
+  if (maxIdx >= 0) {
+    const available = poolL - shallowNonMaxTotal - deepTotal;
+    shallowResolved[maxIdx].lengthFt = Math.max(1, available);
+  }
+
+  const shallowTotal = shallowResolved.reduce((s, r) => s + r.lengthFt, 0);
+  const gap = poolL - shallowTotal - deepTotal;
+
+  // Build combined profile: shallow (L→R) + transition + deep reversed (continuing L→R to wall)
+  const combined = [...shallowResolved];
+
+  // Insert auto-transition slope if there's a gap (and no maximize zone)
+  let transitionZone = null;
+  if (gap > 0.1 && maxIdx < 0) {
+    const lastShallowDepth = shallowResolved.length > 0
+      ? shallowResolved[shallowResolved.length - 1].waterDepthEnd : 0;
+    // Deep zones go wall→interior. The LAST deep zone is closest to shallow.
+    // Its waterDepthEnd (in wall→interior order) faces toward the shallow section.
+    const firstDeepDepth = deepResolved.length > 0
+      ? deepResolved[deepResolved.length - 1].waterDepthEnd : lastShallowDepth;
+    const rise = Math.abs(firstDeepDepth - lastShallowDepth);
+    const ratio = rise > 0 ? (gap * 12 / rise) : 0;
+    const offset = defaults.total;
+    // Transition goes L→R in profile: from shallow end depth → deep end depth
+    transitionZone = {
+      name: '↔ Auto Transition', type: 'slope',
+      waterDepthStart: lastShallowDepth,
+      waterDepthEnd: firstDeepDepth,
+      digDepthStart: Math.max(lastShallowDepth + offset, footingDepth),
+      digDepthEnd: Math.max(firstDeepDepth + offset, footingDepth),
+      lengthFt: gap, offset,
+      slopeRatio: ratio.toFixed(1), slopeRise: rise,
+      isAutoTransition: true
+    };
+    combined.push(transitionZone);
+  }
+
+  // Reverse deep zones for profile: last deep zone (closest to shallow) first, wall zone last
+  const deepReversed = [...deepResolved].reverse().map(r => ({
+    ...r,
+    // Swap start/end since we're reversing direction
+    waterDepthStart: r.waterDepthEnd,
+    waterDepthEnd: r.waterDepthStart,
+    digDepthStart: r.digDepthEnd,
+    digDepthEnd: r.digDepthStart,
+  }));
+  combined.push(...deepReversed);
+
+  const totalZoneLength = combined.reduce((s, r) => s + r.lengthFt, 0);
+  const maxDig = Math.max(...combined.map(r => Math.max(r.digDepthStart, r.digDepthEnd)));
+
+  // Diving envelope compliance
+  const hasDiving = document.getElementById('divingToggle').checked;
+  let diving = null;
+  if (hasDiving) {
+    const dt = parseInt(document.getElementById('divingType').value);
+    const env = DIVING_ENVELOPE[dt];
+
+    // Build envelope points from ACTUAL deep zone positions (wall→interior order)
+    // deepResolved is in wall→interior order; walk it to find actual distances
+    let cumDist = 0;
+    const zoneEdges = [0]; // start at wall
+    for (const rz of deepResolved) {
+      cumDist += rz.lengthFt;
+      zoneEdges.push(cumDist);
+    }
+
+    // Deep zones (when diving): W→A(flat), A→B(slope), B(flat), B→C→D(slope), D→E(flat)
+    // Zone indices:              0          1            2        3              4
+    const wallDepth = 33; // 2'9" standard wall depth
+    const userDepthB = parseInt(document.getElementById('divingDepthB').value) || env.depthB;
+    const lastShallow = shallowZones[shallowZones.length - 1];
+    const deDepth = lastShallow ? Math.max(env.depthD, lastShallow.waterDepth || env.depthD) : env.depthD;
+
+    const distW = zoneEdges[0] || 0;
+    const distA = zoneEdges[1] || 0;  // after W→A flat
+    const distB = zoneEdges[3] || 0;  // after A→B slope + B flat
+    const distBD = zoneEdges[4] || 0; // after B→C→D slope
+    const distE = zoneEdges[5] || 0;  // after D→E flat
+
+    // Point C is partway along the B→D slope where depth reaches depthC
+    const bdSlopeLen = (zoneEdges[4] || 0) - (zoneEdges[3] || 0);
+    const bdRise = userDepthB - deDepth;
+    const cFrac = bdRise > 0 ? (userDepthB - env.depthC) / bdRise : 0;
+    const distC = (zoneEdges[3] || 0) + bdSlopeLen * cFrac;
+
+    // Point D is where depth reaches depthD on the B→D slope
+    const dFrac = bdRise > 0 ? (userDepthB - env.depthD) / bdRise : 1;
+    const distD = (zoneEdges[3] || 0) + bdSlopeLen * dFrac;
+
+    const envPoints = [
+      { name: 'W', dist: distW, depth: wallDepth, width: env.widthA },
+      { name: 'A', dist: distA, depth: env.depthA, width: env.widthA },
+      { name: 'B', dist: distB, depth: env.depthB, width: env.widthB },
+      { name: 'C', dist: distC, depth: env.depthC, width: env.widthC },
+      { name: 'D', dist: distD, depth: env.depthD, width: env.widthD },
+      { name: 'E', dist: distE, depth: env.depthD, width: env.widthD },
+    ];
+    const envTotalLen = distE;
+
+    // Check compliance: walk deepResolved directly (wall→interior order matches envelope distances)
+    const poolDepthAtDist = (dist) => {
+      let d = 0;
+      for (const rz of deepResolved) {
+        if (dist >= d && dist <= d + rz.lengthFt) {
+          const frac = rz.lengthFt > 0 ? (dist - d) / rz.lengthFt : 0;
+          return rz.waterDepthStart + (rz.waterDepthEnd - rz.waterDepthStart) * frac;
+        }
+        d += rz.lengthFt;
+      }
+      return 0;
+    };
+
+    const divingCompliance = envPoints.map(ep => {
+      const actualDepth = poolDepthAtDist(ep.dist);
+      const actualWidth = poolW * 12;
+      return {
+        point: ep.name, dist: ep.dist,
+        reqDepth: ep.depth, actualDepth, depthOk: actualDepth >= ep.depth,
+        reqWidth: ep.width, actualWidth, widthOk: actualWidth >= ep.width
+      };
+    });
+
+    diving = { env, envPoints, envTotalLen, compliance: divingCompliance };
+  }
+
+  const diagWater = Math.sqrt(poolW * poolW + poolL * poolL);
+  const diagDig = Math.sqrt(digW * digW + digL * digL);
+
+  // Play Area: total length of flat zones with water depth between 42" and 54"
+  const playAreaLength = combined.reduce((sum, rz) => {
+    if (rz.type === 'flat' || (rz.type !== 'slope' && rz.type !== 'stairs' && rz.type !== 'steps')) {
+      const depth = rz.waterDepthStart;
+      if (depth >= 42 && depth <= 54) return sum + rz.lengthFt;
+    }
+    return sum;
+  }, 0);
+
+  const coverBox = getCoverBoxSpec();
+
+  // Estimated pool volume in gallons (trapezoidal: avg water depth per zone × length × width)
+  // Each zone has waterDepthStart/End in inches, lengthFt in feet, poolW in feet
+  const volumeCuFt = combined.reduce((sum, rz) => {
+    const avgDepthFt = ((rz.waterDepthStart + rz.waterDepthEnd) / 2) / 12;
+    return sum + (avgDepthFt * rz.lengthFt * poolW);
+  }, 0);
+  const estGallons = Math.round(volumeCuFt * 7.48052);
+
+  return {
+    poolW, poolL, digW, digL, defaults, footingDepth,
+    resolved: combined, shallowResolved, deepResolved, deepReversed,
+    transitionZone, shallowTotal, deepTotal, gap,
+    totalZoneLength, maxDig, diving, diagWater, diagDig, playAreaLength, coverBox,
+    estGallons
+  };
+}
+
+// ══════════════════════════════════════════════════
+// RENDERING
+// ══════════════════════════════════════════════════
+
+function generate() {
+  const data = calculate();
+  const out = document.getElementById('outputArea');
+
+  let html = '';
+
+  // Print-only header with logo (visible only when printing/saving PDF)
+  const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  html += `<div class="print-header">
+    <img src="logo.png" alt="Pasadena Pools">
+    <div class="print-title">
+      <h2>Dig Sheet — ${data.poolW}'×${data.poolL}' Pool</h2>
+      <div class="print-subtitle">${today}</div>
+    </div>
+  </div>`;
+
+  // KPI strip
+  const gapLabel = data.gap > 0.1 ? `+${data.gap.toFixed(1)}' gap` :
+                   data.gap < -0.1 ? `${data.gap.toFixed(1)}' OVERLAP` : 'exact fit';
+  const gapColor = data.gap < -0.1 ? 'var(--red)' : data.gap > 0.1 ? 'var(--orange)' : 'var(--green)';
+
+  html += `<div class="kpi-strip">
+    <div class="kpi"><div class="val">${data.digW}'×${data.digL}'</div><div class="lbl">Dig Dimensions</div></div>
+    <div class="kpi"><div class="val">${data.poolW}'×${data.poolL}'</div><div class="lbl">Water Dimensions</div></div>
+    <div class="kpi"><div class="val">${fmtIn(data.maxDig)}</div><div class="lbl">Max Dig Depth</div></div>
+    <div class="kpi"><div class="val">${data.diagDig.toFixed(1)}'</div><div class="lbl">Dig Diagonal</div></div>
+    <div class="kpi"><div class="val">${data.playAreaLength.toFixed(1)}'</div><div class="lbl">Play Area (3'6"–4'6")</div></div>
+    <div class="kpi"><div class="val" style="font-size:16px;">
+      <span style="color:var(--blue);">${data.shallowTotal.toFixed(1)}'</span>
+      <span style="color:${gapColor};font-size:12px;"> ${gapLabel} </span>
+      <span style="color:#8B4513;">${data.deepTotal.toFixed(1)}'</span>
+    </div><div class="lbl">Play Area + Deep = ${data.totalZoneLength.toFixed(1)}'</div></div>
+    <div class="kpi"><div class="val">${data.estGallons.toLocaleString()}</div><div class="lbl">Est. Gallons</div></div>
+  </div>`;
+
+  // Diving compliance card
+  if (data.diving) {
+    const allOk = data.diving.compliance.every(c => c.depthOk && c.widthOk);
+    html += `<div class="card" style="border-left:4px solid ${allOk ? 'var(--green)' : 'var(--red)'};">`;
+    html += `<button class="save-png-btn no-print" onclick="saveSectionPNG(this)">Save PNG</button>`;
+    html += `<h2 style="color:${allOk ? 'var(--green)' : 'var(--red)'};">${allOk ? '✓ DIVING ENVELOPE — COMPLIANT' : '✗ DIVING ENVELOPE — VIOLATIONS FOUND'}</h2>`;
+    html += `<table class="sum-table"><tr><th>Point</th><th>Distance from Wall</th><th>Required Depth</th><th>Actual Depth</th><th>Depth</th><th>Required Width</th><th>Pool Width</th><th>Width</th></tr>`;
+    data.diving.compliance.forEach(c => {
+      const dIcon = c.depthOk ? '<span style="color:var(--green)">✓</span>' : '<span style="color:var(--red);font-weight:700">✗ FAIL</span>';
+      const wIcon = c.widthOk ? '<span style="color:var(--green)">✓</span>' : '<span style="color:var(--red);font-weight:700">✗ FAIL</span>';
+      html += `<tr><td>${c.point}</td><td>${c.dist.toFixed(1)}'</td><td>${fmtIn(c.reqDepth)}</td><td>${fmtIn(Math.round(c.actualDepth))}</td><td>${dIcon}</td><td>${fmtIn(c.reqWidth)}</td><td>${fmtIn(c.actualWidth)}</td><td>${wIcon}</td></tr>`;
+    });
+    html += `</table></div>`;
+  }
+
+  // Cover box card — full Save-T® 3 output with diagrams
+  if (data.coverBox) {
+    const cb = data.coverBox;
+    const cbOk = cb.valid;
+    const beamOk = cb.B >= cb.bRange[0] && cb.B <= cb.bRange[1];
+
+    // Validation
+    html += `<div class="card" style="border-left:4px solid ${cbOk ? 'var(--blue)' : 'var(--red)'};">`;
+    html += `<button class="save-png-btn no-print" onclick="saveSectionPNG(this)">Save PNG</button>`;
+    html += `<h2 style="color:${cbOk ? 'var(--blue)' : 'var(--red)'};">${cbOk ? '✓' : '✗'} COVER BOX — ${cb.label}</h2>`;
+
+    if (!cbOk) {
+      html += `<div style="background:#fde8e8;border-radius:6px;padding:8px 12px;margin-bottom:12px;font-size:12px;color:var(--red);font-weight:600;">Pool exceeds Save-T® 3 max (${cb.maxLenFt}' × ${cb.maxWidFt}'). Contact Cover-Pools.</div>`;
+    }
+    if (!beamOk) {
+      html += `<div style="background:#fef6ec;border-radius:6px;padding:8px 12px;margin-bottom:12px;font-size:12px;color:var(--orange);font-weight:600;">Beam ${cb.B}" outside typical range (${cb.bRange[0]}"–${cb.bRange[1]}"). Verify measurement.</div>`;
+    }
+
+    // Dig dimensions callout
+    html += `<div style="background:linear-gradient(135deg,#0d2137 0%,#1a3a5c 100%);color:#fff;border-radius:8px;padding:16px;margin-bottom:14px;">`;
+    html += `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#8cb4e0;margin-bottom:10px;">Cover Box Dig Dimensions</div>`;
+    html += `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px;">`;
+    html += `<div style="background:rgba(13,110,253,0.25);border:1px solid rgba(13,110,253,0.4);border-radius:6px;padding:10px;text-align:center;"><div style="font-size:10px;color:#8cb4e0;font-weight:600;">TOTAL LENGTH</div><div style="font-size:20px;font-weight:800;">${fmtIn(cb.totalBoxLen)}</div><div style="font-size:10px;color:#8cb4e0;">Pool ${cb.poolL}' + ${cb.M}" motor + ${cb.O}" opp</div></div>`;
+    html += `<div style="background:rgba(13,110,253,0.25);border:1px solid rgba(13,110,253,0.4);border-radius:6px;padding:10px;text-align:center;"><div style="font-size:10px;color:#8cb4e0;font-weight:600;">WIDTH (W)</div><div style="font-size:20px;font-weight:800;">${fmtIn(cb.W)}</div><div style="font-size:10px;color:#8cb4e0;">behind beam wall</div></div>`;
+    html += `<div style="background:rgba(13,110,253,0.25);border:1px solid rgba(13,110,253,0.4);border-radius:6px;padding:10px;text-align:center;"><div style="font-size:10px;color:#8cb4e0;font-weight:600;">DEPTH (D)</div><div style="font-size:20px;font-weight:800;">${fmtIn(cb.D)}</div><div style="font-size:10px;color:#8cb4e0;">from top of beam</div></div>`;
+    html += `</div>`;
+    html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">`;
+    html += `<div style="background:rgba(255,255,255,0.08);border-radius:6px;padding:10px;text-align:center;"><div style="font-size:10px;color:#8cb4e0;font-weight:600;">TOTAL DIG WIDTH</div><div style="font-size:18px;font-weight:800;">${fmtIn(cb.totalDigW)}</div><div style="font-size:10px;color:#8cb4e0;">${fmtIn(cb.B)} beam + ${fmtIn(cb.W)} box</div></div>`;
+    html += `<div style="background:rgba(255,255,255,0.08);border-radius:6px;padding:10px;text-align:center;"><div style="font-size:10px;color:#8cb4e0;font-weight:600;">MOTOR END EXTRA (M)</div><div style="font-size:18px;font-weight:800;">${fmtIn(cb.M)}</div><div style="font-size:10px;color:#8cb4e0;">past pool end</div></div>`;
+    html += `</div>`;
+    html += `<div style="text-align:center;margin-top:10px;font-size:12px;color:#8cb4e0;">Dig <strong style="color:#fff;">${fmtIn(cb.totalBoxLen)}</strong> long × <strong style="color:#fff;">${fmtIn(cb.totalDigW)}</strong> wide × <strong style="color:#fff;">${fmtIn(cb.D)}</strong> deep</div>`;
+    html += `</div>`;
+
+    // All dimensions table
+    html += `<table class="sum-table"><tr><th>Parameter</th><th>Value</th><th>Notes</th></tr>`;
+    html += `<tr><td>M — Motor End</td><td>${fmtIn(cb.M)}</td><td>Extension past pool end for motor</td></tr>`;
+    html += `<tr><td>O — Opposite End</td><td>${fmtIn(cb.O)}</td><td>Extension past pool end (non-motor)</td></tr>`;
+    html += `<tr><td>B — Beam Wall</td><td>${fmtIn(cb.B)}</td><td>Actual beam thickness${beamOk ? '' : ' ⚠ outside typical'}</td></tr>`;
+    html += `<tr><td>T — Throat Opening</td><td>${fmtIn(cb.T)}</td><td>Min to finished beam</td></tr>`;
+    html += `<tr><td>D — Depth</td><td>${fmtIn(cb.D)}</td><td>Min depth below deck/beam top</td></tr>`;
+    html += `<tr><td>W — Width</td><td>${fmtIn(cb.W)}</td><td>Min width behind beam wall</td></tr>`;
+    html += `<tr class="total-row"><td>Total Box Length</td><td>${fmtIn(cb.totalBoxLen)}</td><td>Pool ${cb.poolL}' + M + O</td></tr>`;
+    html += `<tr class="total-row"><td>Total Dig Width</td><td>${fmtIn(cb.totalDigW)}</td><td>B + W behind water edge</td></tr>`;
+    html += `</table>`;
+
+    // Construction notes
+    html += `<div style="background:#fffbf0;border:1.5px solid #f0ddb8;border-radius:6px;padding:10px;margin-top:10px;font-size:11px;">`;
+    html += `<strong style="color:#8B4513;">Construction Notes:</strong> `;
+    html += `Conduit on motor end, max 4" into box, max 6" from top. `;
+    html += `3" drain required (floor or wall), centerline max 4" from end. `;
+    html += `Bond wire required on both ends. T = 2" min to finished beam.`;
+    html += `</div>`;
+
+    html += `</div>`;
+
+    // Cover Box Plan View diagram
+    html += `<div class="card print-page"><button class="save-png-btn no-print" onclick="saveSectionPNG(this)">Save PNG</button><h2>Cover Box — Plan View (Looking Down)</h2><div class="diagram-wrap"><svg id="cbPlanSvg" viewBox="0 0 860 480" width="860" height="480" xmlns="http://www.w3.org/2000/svg" style="font-family:'Segoe UI',system-ui,sans-serif;"></svg></div><div style="font-size:10px;color:var(--gray);text-align:right;">Ref: Cover-Pools Save-T® 3 — Recessed Concrete, Wood, or UPB Box — Underside Track</div></div>`;
+
+    // Cover Box Cross-Section diagram
+    html += `<div class="card print-page"><button class="save-png-btn no-print" onclick="saveSectionPNG(this)">Save PNG</button><h2>Cover Box — Cross-Section (Side View — Through Back Wall)</h2><div class="diagram-wrap"><svg id="cbSectionSvg" viewBox="0 0 860 440" width="860" height="440" xmlns="http://www.w3.org/2000/svg" style="font-family:'Segoe UI',system-ui,sans-serif;"></svg></div></div>`;
+  }
+
+  // Plan view
+  html += `<div class="card print-page"><button class="save-png-btn no-print" onclick="saveSectionPNG(this)">Save PNG</button><h2>Plan View — Top Down</h2><div class="diagram-wrap"><svg id="planSvg" viewBox="0 0 860 500" width="860" height="500" xmlns="http://www.w3.org/2000/svg" style="font-family:'Segoe UI',system-ui,sans-serif;"></svg></div></div>`;
+
+  // Water depth diagram
+  html += `<div class="card print-page"><button class="save-png-btn no-print" onclick="saveSectionPNG(this)">Save PNG</button><h2>Side Profile — Water Depths${data.diving ? ' (with diving envelope overlay)' : ''}</h2><div class="diagram-wrap"><svg id="waterSvg" viewBox="0 0 860 380" width="860" height="380" xmlns="http://www.w3.org/2000/svg" style="font-family:'Segoe UI',system-ui,sans-serif;"></svg></div></div>`;
+
+  // Dig depth diagram
+  html += `<div class="card print-page"><button class="save-png-btn no-print" onclick="saveSectionPNG(this)">Save PNG</button><h2>Side Profile — Dig Cross-Section${data.coverBox ? ' (with cover box)' : ''}</h2><div class="diagram-wrap"><svg id="profileSvg" viewBox="-20 0 940 450" width="940" height="450" xmlns="http://www.w3.org/2000/svg" style="font-family:'Segoe UI',system-ui,sans-serif;"></svg></div></div>`;
+
+  // Summary table
+  html += `<div class="card print-page"><button class="save-png-btn no-print" onclick="saveSectionPNG(this)">Save PNG</button><h2>Zone Summary Table</h2>`;
+  html += `<table class="sum-table"><tr>
+    <th>Zone</th><th>Section</th><th>Length (ft)</th>
+    <th>Water Depth</th><th>Dig Offset</th><th>Dig Depth</th><th>Slope / Steps</th>
+  </tr>`;
+
+  // Shallow section
+  html += `<tr class="section-row"><td colspan="7">▸ Shallow End (${data.shallowTotal.toFixed(1)}')</td></tr>`;
+  data.shallowResolved.forEach(r => {
+    const wd = (r.type === 'slope' || r.type === 'stairs') ? `${fmtIn(r.waterDepthStart)} → ${fmtIn(r.waterDepthEnd)}` : fmtIn(r.waterDepthStart);
+    const dd = (r.type === 'slope' || r.type === 'stairs') ? `${fmtIn(r.digDepthStart)} → ${fmtIn(r.digDepthEnd)}` : fmtIn(r.digDepthStart);
+    let detail = '—';
+    if (r.type === 'slope') detail = `1:${r.slopeRatio}`;
+    if (r.type === 'stairs') detail = `${r.numSteps} steps (${r.actualRise.toFixed(1)}" rise × ${r.stairRun}" run)`;
+    html += `<tr><td>${r.name}</td><td style="color:var(--blue);font-size:10px;">SHALLOW</td><td>${r.lengthFt.toFixed(1)}</td><td>${wd}</td><td>${r.offset}"</td><td>${dd}</td><td>${detail}</td></tr>`;
+  });
+
+  // Transition
+  if (data.transitionZone) {
+    html += `<tr style="background:#fff8f0;"><td>${data.transitionZone.name}</td><td style="color:var(--orange);font-size:10px;">AUTO</td><td>${data.transitionZone.lengthFt.toFixed(1)}</td><td>${fmtIn(data.transitionZone.waterDepthStart)} → ${fmtIn(data.transitionZone.waterDepthEnd)}</td><td>${data.transitionZone.offset}"</td><td>${fmtIn(data.transitionZone.digDepthStart)} → ${fmtIn(data.transitionZone.digDepthEnd)}</td><td>1:${data.transitionZone.slopeRatio}</td></tr>`;
+  }
+
+  // Deep section (show in wall→shallow order for clarity)
+  html += `<tr class="section-row"><td colspan="7">▸ Deep End from Wall (${data.deepTotal.toFixed(1)}')</td></tr>`;
+  data.deepResolved.forEach(r => {
+    const wd = (r.type === 'slope' || r.type === 'stairs') ? `${fmtIn(r.waterDepthStart)} → ${fmtIn(r.waterDepthEnd)}` : fmtIn(r.waterDepthStart);
+    const dd = (r.type === 'slope' || r.type === 'stairs') ? `${fmtIn(r.digDepthStart)} → ${fmtIn(r.digDepthEnd)}` : fmtIn(r.digDepthStart);
+    let detail = '—';
+    if (r.type === 'slope') detail = `1:${r.slopeRatio}`;
+    if (r.type === 'stairs') detail = `${r.numSteps} steps (${r.actualRise.toFixed(1)}" rise × ${r.stairRun}" run)`;
+    html += `<tr><td>${r.name}</td><td style="color:#8B4513;font-size:10px;">DEEP</td><td>${r.lengthFt.toFixed(1)}</td><td>${wd}</td><td>${r.offset}"</td><td>${dd}</td><td>${detail}</td></tr>`;
+  });
+
+  html += `<tr class="total-row"><td>TOTAL</td><td></td><td>${data.totalZoneLength.toFixed(1)}</td><td colspan="4">Pool length: ${data.poolL}' ${Math.abs(data.totalZoneLength - data.poolL) > 0.1 ? '⚠' : '✓'}</td></tr>`;
+  html += `</table>`;
+
+  // Build-up summary
+  html += `<h3 style="font-size:12px; margin:16px 0 6px; color:var(--dark);">Build-Up Breakdown (above water → below floor)</h3>`;
+  html += `<table class="sum-table"><tr><th>Component</th><th>Thickness</th><th>Direction</th></tr>`;
+  const fb = parseFloat(document.getElementById('freeboard').value);
+  const fl = parseFloat(document.getElementById('floatAllow').value);
+  const ct = parseFloat(document.getElementById('coverTrack').value);
+  const co = parseFloat(document.getElementById('coping').value);
+  const fc = parseFloat(document.getElementById('floorConcrete').value);
+  const gravel = document.getElementById('gravelToggle').checked;
+  const gt = gravel ? parseFloat(document.getElementById('gravelThick').value) : 0;
+  html += `<tr><td>Coping</td><td>${co}"</td><td>Above water</td></tr>`;
+  html += `<tr><td>Auto Cover Track</td><td>${ct}"</td><td>Above water</td></tr>`;
+  html += `<tr><td>Float Allowance</td><td>${fl}"</td><td>Above water</td></tr>`;
+  html += `<tr><td>Freeboard</td><td>${fb}"</td><td>Above water</td></tr>`;
+  html += `<tr><td>Floor Concrete</td><td>${fc}"</td><td>Below water</td></tr>`;
+  if (gravel) html += `<tr><td>Gravel Base</td><td>${gt}"</td><td>Below water</td></tr>`;
+  html += `<tr class="total-row"><td>TOTAL DIG OFFSET</td><td>${data.defaults.total.toFixed(1)}"</td><td></td></tr>`;
+  html += `</table>`;
+
+  html += `<p style="font-size:11px; color:var(--gray); margin-top:12px;">Perimeter footing minimum: ${data.footingDepth}" (frost depth, Utah). Dig adds 1' each side of water dimensions.</p>`;
+  html += `</div>`;
+
+  out.innerHTML = html;
+  drawPlanView(data);
+  drawWaterProfile(data);
+  drawProfile(data);
+  if (data.coverBox) {
+    drawCoverBoxPlan(data.coverBox);
+    drawCoverBoxSection(data.coverBox);
+  }
+}
+
+// ══════════════════════════════════════════════════
+// PLAN VIEW
+// ══════════════════════════════════════════════════
+
+function drawPlanView(data) {
+  const svg = document.getElementById('planSvg');
+  if (!svg) return;
+
+  const CX = 430, CY = 240;
+  // Use more of the available space — fit to 700px wide, 380px tall with margins
+  const scaleW = 680 / data.digL;
+  const scaleH = 360 / data.digW;
+  const scale = Math.min(scaleW, scaleH);
+
+  const digW = data.digW * scale;
+  const digL = data.digL * scale;
+  const waterW = data.poolW * scale;
+  const waterL = data.poolL * scale;
+
+  let html = '';
+
+  // Dig rectangle
+  const dx = CX - digL / 2, dy = CY - digW / 2;
+  html += `<rect x="${dx}" y="${dy}" width="${digL}" height="${digW}" fill="#f5e6d3" stroke="#8B4513" stroke-width="2" stroke-dasharray="8,4" rx="3"/>`;
+
+  // Water rectangle
+  const wx = CX - waterL / 2, wy = CY - waterW / 2;
+  html += `<rect x="${wx}" y="${wy}" width="${waterL}" height="${waterW}" fill="#d4eaf7" stroke="#0d6efd" stroke-width="2.5" rx="2"/>`;
+
+  // 1' overdig
+  html += `<line x1="${CX}" y1="${dy}" x2="${CX}" y2="${wy}" stroke="#8B4513" stroke-width="1"/>`;
+  html += `<text x="${CX + 4}" y="${(dy + wy) / 2 + 3}" font-size="10" fill="#8B4513" font-weight="600">1' overdig</text>`;
+  html += `<line x1="${wx + waterL}" y1="${CY}" x2="${dx + digL}" y2="${CY}" stroke="#8B4513" stroke-width="1"/>`;
+  html += `<text x="${(wx + waterL + dx + digL) / 2}" y="${CY - 4}" font-size="10" fill="#8B4513" text-anchor="middle" font-weight="600">1'</text>`;
+
+  // Dig width (left)
+  const dimLeft = dx - 35;
+  html += `<line x1="${dimLeft}" y1="${dy}" x2="${dimLeft}" y2="${dy + digW}" stroke="#8B4513" stroke-width="1.5"/>`;
+  html += `<line x1="${dimLeft - 4}" y1="${dy}" x2="${dimLeft + 4}" y2="${dy}" stroke="#8B4513" stroke-width="1.5"/>`;
+  html += `<line x1="${dimLeft - 4}" y1="${dy + digW}" x2="${dimLeft + 4}" y2="${dy + digW}" stroke="#8B4513" stroke-width="1.5"/>`;
+  html += `<text x="${dimLeft - 5}" y="${CY + 4}" font-size="12" fill="#8B4513" text-anchor="end" font-weight="700">${data.digW}' dig</text>`;
+
+  // Water width (left inside)
+  const wdimLeft = wx - 15;
+  html += `<line x1="${wdimLeft}" y1="${wy}" x2="${wdimLeft}" y2="${wy + waterW}" stroke="#0d6efd" stroke-width="1"/>`;
+  html += `<line x1="${wdimLeft - 3}" y1="${wy}" x2="${wdimLeft + 3}" y2="${wy}" stroke="#0d6efd" stroke-width="1"/>`;
+  html += `<line x1="${wdimLeft - 3}" y1="${wy + waterW}" x2="${wdimLeft + 3}" y2="${wy + waterW}" stroke="#0d6efd" stroke-width="1"/>`;
+  html += `<text x="${wdimLeft - 3}" y="${CY + 4}" font-size="11" fill="#0d6efd" text-anchor="end" font-weight="600">${data.poolW}' water</text>`;
+
+  // Dig length (top)
+  const dimTop = dy - 20;
+  html += `<line x1="${dx}" y1="${dimTop}" x2="${dx + digL}" y2="${dimTop}" stroke="#8B4513" stroke-width="1.5"/>`;
+  html += `<line x1="${dx}" y1="${dimTop - 4}" x2="${dx}" y2="${dimTop + 4}" stroke="#8B4513" stroke-width="1.5"/>`;
+  html += `<line x1="${dx + digL}" y1="${dimTop - 4}" x2="${dx + digL}" y2="${dimTop + 4}" stroke="#8B4513" stroke-width="1.5"/>`;
+  html += `<text x="${CX}" y="${dimTop - 5}" font-size="12" fill="#8B4513" text-anchor="middle" font-weight="700">${data.digL}' dig</text>`;
+
+  // Water length (inside top)
+  html += `<text x="${CX}" y="${wy + 14}" font-size="11" fill="#0d6efd" text-anchor="middle" font-weight="600">${data.poolL}' water</text>`;
+
+  // Diagonal
+  html += `<line x1="${dx}" y1="${dy}" x2="${dx + digL}" y2="${dy + digW}" stroke="#e67e22" stroke-width="1.5" stroke-dasharray="6,3"/>`;
+  html += `<text x="${CX + 20}" y="${CY + 20}" font-size="12" fill="#e67e22" font-weight="700" transform="rotate(${Math.atan2(digW, digL) * 180 / Math.PI}, ${CX + 20}, ${CY + 20})">${data.diagDig.toFixed(1)}' diagonal (dig)</text>`;
+
+  html += `<line x1="${wx}" y1="${wy}" x2="${wx + waterL}" y2="${wy + waterW}" stroke="#0d6efd" stroke-width="1" stroke-dasharray="4,3" opacity="0.5"/>`;
+  html += `<text x="${CX - 20}" y="${CY - 5}" font-size="10" fill="#0d6efd" text-anchor="middle" font-weight="600" transform="rotate(${Math.atan2(waterW, waterL) * 180 / Math.PI}, ${CX - 20}, ${CY - 5})">${data.diagWater.toFixed(1)}' (water)</text>`;
+
+  // Zone markers along length
+  let zx = wx;
+  const totalLen = data.totalZoneLength;
+  data.resolved.forEach((r, i) => {
+    const zoneW = (r.lengthFt / totalLen) * waterL;
+    if (i > 0) {
+      html += `<line x1="${zx}" y1="${wy}" x2="${zx}" y2="${wy + waterW}" stroke="#0d6efd" stroke-width="0.5" stroke-dasharray="3,3" opacity="0.5"/>`;
+    }
+    if (zoneW > 30) {
+      html += `<text x="${zx + zoneW / 2}" y="${wy + waterW - 6}" font-size="8" fill="#0d6efd" text-anchor="middle" opacity="0.7">${r.name}</text>`;
+    }
+    zx += zoneW;
+  });
+
+  // Diving board indicator
+  if (data.diving) {
+    const boardX = wx + waterL - 5;
+    html += `<rect x="${boardX}" y="${CY - 4}" width="${30}" height="8" rx="2" fill="#5a7a5a" stroke="#3a5a3a" stroke-width="1"/>`;
+    html += `<text x="${boardX + 35}" y="${CY + 3}" font-size="9" fill="#3a5a3a" font-weight="600">BOARD</text>`;
+  }
+
+  // Section labels
+  const shallowPct = data.shallowTotal / totalLen;
+  const shallowEndX = wx + shallowPct * waterL;
+  html += `<rect x="${wx}" y="${wy + waterW + 8}" width="${shallowPct * waterL}" height="5" rx="2" fill="var(--blue)" opacity="0.5"/>`;
+  html += `<text x="${wx + shallowPct * waterL / 2}" y="${wy + waterW + 24}" font-size="9" fill="var(--blue)" text-anchor="middle" font-weight="600">Shallow ${data.shallowTotal.toFixed(1)}'</text>`;
+
+  const deepPct = data.deepTotal / totalLen;
+  const deepStartX = wx + waterL - deepPct * waterL;
+  html += `<rect x="${deepStartX}" y="${wy + waterW + 8}" width="${deepPct * waterL}" height="5" rx="2" fill="#8B4513" opacity="0.5"/>`;
+  html += `<text x="${deepStartX + deepPct * waterL / 2}" y="${wy + waterW + 24}" font-size="9" fill="#8B4513" text-anchor="middle" font-weight="600">Deep ${data.deepTotal.toFixed(1)}'</text>`;
+
+  // Legend
+  html += `<rect x="${dx}" y="${dy + digW + 30}" width="14" height="10" fill="#f5e6d3" stroke="#8B4513" stroke-width="1" stroke-dasharray="3,2"/>`;
+  html += `<text x="${dx + 18}" y="${dy + digW + 38}" font-size="10" fill="#666">Dig outline</text>`;
+  html += `<rect x="${dx + 100}" y="${dy + digW + 30}" width="14" height="10" fill="#d4eaf7" stroke="#0d6efd" stroke-width="1.5"/>`;
+  html += `<text x="${dx + 118}" y="${dy + digW + 38}" font-size="10" fill="#666">Water outline</text>`;
+
+  svg.innerHTML = html;
+}
+
+// ══════════════════════════════════════════════════
+// WATER PROFILE
+// ══════════════════════════════════════════════════
+
+function drawWaterProfile(data) {
+  const svg = document.getElementById('waterSvg');
+  if (!svg) return;
+
+  const LEFT = 70, TOP = 45, RIGHT = 820, BOT = 340;
+  const WATER_Y = TOP + 40;
+
+  const totalLen = data.totalZoneLength;
+  const maxWater = Math.max(...data.resolved.map(r => Math.max(r.waterDepthStart, r.waterDepthEnd)));
+  const scaleX = (RIGHT - LEFT) / (totalLen > 0 ? totalLen : 1);
+  const scaleY = (BOT - WATER_Y - 20) / (maxWater > 0 ? maxWater + 10 : 100);
+
+  let html = '';
+
+  // Build zone geometry
+  const zoneGeo = [];
+  let x = LEFT;
+  for (const r of data.resolved) {
+    const x1 = x;
+    const x2 = x + r.lengthFt * scaleX;
+    const y1 = WATER_Y + r.waterDepthStart * scaleY;
+    const y2 = WATER_Y + r.waterDepthEnd * scaleY;
+    zoneGeo.push({ ...r, x1, x2, y1, y2 });
+    x = x2;
+  }
+
+  const endX = zoneGeo.length > 0 ? zoneGeo[zoneGeo.length - 1].x2 : RIGHT;
+
+  // Water fill
+  if (zoneGeo.length > 0) {
+    let waterPath = `M ${LEFT},${WATER_Y}`;
+    zoneGeo.forEach(g => {
+      if (g.type === 'stairs' && g.numSteps > 0) {
+        const stepW = (g.x2 - g.x1) / g.numSteps;
+        const stepH = (g.y2 - g.y1) / g.numSteps;
+        for (let s = 0; s < g.numSteps; s++) {
+          const sx = g.x1 + s * stepW;
+          const sy = g.y1 + s * stepH;
+          waterPath += ` L ${sx},${sy} L ${sx},${sy + stepH} L ${sx + stepW},${sy + stepH}`;
+        }
+      } else {
+        waterPath += ` L ${g.x1},${g.y1} L ${g.x2},${g.y2}`;
+      }
+    });
+    waterPath += ` L ${endX},${WATER_Y} Z`;
+    html += `<path d="${waterPath}" fill="#b8dff0" opacity="0.45"/>`;
+  }
+
+  // Pool floor
+  if (zoneGeo.length > 0) {
+    let floorPath = `M ${LEFT},${zoneGeo[0].y1}`;
+    zoneGeo.forEach(g => {
+      if (g.type === 'stairs' && g.numSteps > 0) {
+        const stepW = (g.x2 - g.x1) / g.numSteps;
+        const stepH = (g.y2 - g.y1) / g.numSteps;
+        for (let s = 0; s < g.numSteps; s++) {
+          const sx = g.x1 + s * stepW;
+          const sy = g.y1 + s * stepH;
+          floorPath += ` L ${sx},${sy} L ${sx},${sy + stepH} L ${sx + stepW},${sy + stepH}`;
+        }
+      } else {
+        floorPath += ` L ${g.x1},${g.y1} L ${g.x2},${g.y2}`;
+      }
+    });
+    html += `<path d="${floorPath}" fill="none" stroke="#0d6efd" stroke-width="3" stroke-linejoin="round"/>`;
+  }
+
+  // Water surface
+  html += `<line x1="${LEFT - 5}" y1="${WATER_Y}" x2="${endX + 10}" y2="${WATER_Y}" stroke="#0d6efd" stroke-width="2.5"/>`;
+  html += `<text x="${endX + 14}" y="${WATER_Y + 4}" font-size="10" fill="#0d6efd" font-weight="600">WATER LINE</text>`;
+
+  // Pool walls
+  if (zoneGeo.length > 0) {
+    html += `<line x1="${LEFT}" y1="${WATER_Y - 8}" x2="${LEFT}" y2="${zoneGeo[0].y1 + 3}" stroke="#0d6efd" stroke-width="2.5"/>`;
+    const last = zoneGeo[zoneGeo.length - 1];
+    html += `<line x1="${last.x2}" y1="${WATER_Y - 8}" x2="${last.x2}" y2="${last.y2 + 3}" stroke="#0d6efd" stroke-width="2.5"/>`;
+  }
+
+  // Section divider line
+  if (data.shallowResolved.length > 0) {
+    const shallowEndX = LEFT + data.shallowTotal * scaleX;
+    if (data.transitionZone) {
+      const transEndX = shallowEndX + data.transitionZone.lengthFt * scaleX;
+      // Shade transition zone
+      const y1 = WATER_Y + data.transitionZone.waterDepthStart * scaleY;
+      const y2 = WATER_Y + data.transitionZone.waterDepthEnd * scaleY;
+      html += `<rect x="${shallowEndX}" y="${WATER_Y}" width="${transEndX - shallowEndX}" height="${Math.max(y1, y2) - WATER_Y}" fill="#e67e22" opacity="0.08"/>`;
+    }
+    html += `<line x1="${shallowEndX}" y1="${WATER_Y - 6}" x2="${shallowEndX}" y2="${BOT - 20}" stroke="var(--blue)" stroke-width="1.5" stroke-dasharray="4,4" opacity="0.4"/>`;
+    html += `<text x="${shallowEndX}" y="${BOT - 22}" font-size="8" fill="var(--blue)" text-anchor="middle" opacity="0.6">shallow end</text>`;
+
+    if (data.deepResolved.length > 0) {
+      const deepStartX = endX - data.deepTotal * scaleX;
+      html += `<line x1="${deepStartX}" y1="${WATER_Y - 6}" x2="${deepStartX}" y2="${BOT - 20}" stroke="#8B4513" stroke-width="1.5" stroke-dasharray="4,4" opacity="0.4"/>`;
+      html += `<text x="${deepStartX}" y="${BOT - 22}" font-size="8" fill="#8B4513" text-anchor="middle" opacity="0.6">deep end</text>`;
+    }
+  }
+
+  // Overall length dimension
+  if (zoneGeo.length > 0) {
+    const firstX = zoneGeo[0].x1;
+    const lastX = zoneGeo[zoneGeo.length - 1].x2;
+    const dimY = BOT - 8;
+    html += `<line x1="${firstX}" y1="${dimY}" x2="${lastX}" y2="${dimY}" stroke="var(--dark)" stroke-width="1.5"/>`;
+    html += `<line x1="${firstX}" y1="${dimY - 5}" x2="${firstX}" y2="${dimY + 5}" stroke="var(--dark)" stroke-width="1.5"/>`;
+    html += `<line x1="${lastX}" y1="${dimY - 5}" x2="${lastX}" y2="${dimY + 5}" stroke="var(--dark)" stroke-width="1.5"/>`;
+    html += `<text x="${(firstX + lastX) / 2}" y="${dimY - 5}" font-size="12" fill="var(--dark)" text-anchor="middle" font-weight="800">Total: ${data.totalZoneLength.toFixed(1)}' (pool = ${data.poolL}')</text>`;
+    if (Math.abs(data.totalZoneLength - data.poolL) > 0.1) {
+      const diff = data.totalZoneLength - data.poolL;
+      const color = diff > 0 ? 'var(--red)' : 'var(--orange)';
+      html += `<text x="${(firstX + lastX) / 2}" y="${dimY + 10}" font-size="10" fill="${color}" text-anchor="middle" font-weight="700">${diff > 0 ? '⚠ OVER' : '⚠ UNDER'} by ${Math.abs(diff).toFixed(1)}'</text>`;
+    }
+  }
+
+  // Zone labels and depths — smart layout to avoid overlap
+  const MIN_LABEL_W = 55; // minimum px width before we start condensing labels
+  zoneGeo.forEach((g, i) => {
+    const midX = (g.x1 + g.x2) / 2;
+    const zoneW = g.x2 - g.x1;
+    const narrow = zoneW < MIN_LABEL_W;
+    const veryNarrow = zoneW < 30;
+    const fontSize = narrow ? 8 : 10;
+
+    // Zone name — skip if very narrow, abbreviate if narrow
+    if (!veryNarrow) {
+      const displayName = narrow ? (g.name.match(/\(([^)]+)\)/) ? g.name.match(/\(([^)]+)\)/)[1] : g.name.substring(0, 8)) : g.name;
+      html += `<text x="${midX}" y="${TOP + 4}" font-size="${fontSize}" fill="${g.isAutoTransition ? 'var(--orange)' : 'var(--dark)'}" text-anchor="middle" font-weight="700">${displayName}</text>`;
+    }
+
+    // Length dimension — ALWAYS show, even for very narrow zones
+    if (zoneW >= 12) {
+      html += `<line x1="${g.x1 + 2}" y1="${TOP + 14}" x2="${g.x2 - 2}" y2="${TOP + 14}" stroke="#555" stroke-width="1"/>`;
+      html += `<line x1="${g.x1}" y1="${TOP + 11}" x2="${g.x1}" y2="${TOP + 17}" stroke="#555" stroke-width="1.5"/>`;
+      html += `<line x1="${g.x2}" y1="${TOP + 11}" x2="${g.x2}" y2="${TOP + 17}" stroke="#555" stroke-width="1.5"/>`;
+      html += `<text x="${midX}" y="${TOP + 26}" font-size="${veryNarrow ? 6 : narrow ? 7 : 9}" fill="#555" text-anchor="middle">${g.lengthFt.toFixed(1)}'</text>`;
+    } else {
+      // Ultra-narrow: just tick marks, no dimension line or text
+      html += `<line x1="${g.x1}" y1="${TOP + 11}" x2="${g.x1}" y2="${TOP + 17}" stroke="#555" stroke-width="1.5"/>`;
+      html += `<line x1="${g.x2}" y1="${TOP + 11}" x2="${g.x2}" y2="${TOP + 17}" stroke="#555" stroke-width="1.5"/>`;
+    }
+
+    // Depth callouts — adapted for narrow zones
+    const centerY = (g.y1 + g.y2) / 2;
+    const midWaterY = (WATER_Y + centerY) / 2;
+
+    if (g.type === 'slope') {
+      if (narrow) {
+        // Compact: just show ratio badge centered
+        html += `<rect x="${midX - 16}" y="${midWaterY - 7}" width="32" height="14" rx="3" fill="#fff" opacity="0.9" stroke="${g.isAutoTransition ? 'var(--orange)' : '#0d6efd'}" stroke-width="1"/>`;
+        html += `<text x="${midX}" y="${midWaterY + 4}" font-size="9" fill="#e67e22" text-anchor="middle" font-weight="700">1:${g.slopeRatio}</text>`;
+      } else {
+        html += `<text x="${g.x1 + 12}" y="${(WATER_Y + g.y1) / 2}" font-size="11" fill="#0d6efd" font-weight="700">${fmtIn(g.waterDepthStart)}</text>`;
+        html += `<text x="${g.x2 - 12}" y="${(WATER_Y + g.y2) / 2}" font-size="11" fill="#0d6efd" text-anchor="end" font-weight="700">${fmtIn(g.waterDepthEnd)}</text>`;
+        html += `<rect x="${midX - 22}" y="${midWaterY - 8}" width="44" height="16" rx="4" fill="#fff" opacity="0.9" stroke="${g.isAutoTransition ? 'var(--orange)' : '#0d6efd'}" stroke-width="1"/>`;
+        html += `<text x="${midX}" y="${midWaterY + 4}" font-size="10" fill="#e67e22" text-anchor="middle" font-weight="700">1:${g.slopeRatio}</text>`;
+      }
+    } else if (g.type === 'stairs' && g.numSteps > 0) {
+      if (!narrow) {
+        html += `<text x="${g.x1 + 12}" y="${(WATER_Y + g.y1) / 2}" font-size="11" fill="#0d6efd" font-weight="700">${fmtIn(g.waterDepthStart)}</text>`;
+        html += `<text x="${g.x2 - 12}" y="${(WATER_Y + g.y2) / 2}" font-size="11" fill="#0d6efd" text-anchor="end" font-weight="700">${fmtIn(g.waterDepthEnd)}</text>`;
+      }
+      html += `<rect x="${midX - 22}" y="${midWaterY - 8}" width="44" height="16" rx="4" fill="#fff" opacity="0.9" stroke="#0d6efd" stroke-width="1"/>`;
+      html += `<text x="${midX}" y="${midWaterY + 4}" font-size="9" fill="#e67e22" text-anchor="middle" font-weight="700">${g.numSteps} steps</text>`;
+    } else {
+      // Flat zone depth callout
+      const depthLabel = fmtIn(g.waterDepthStart);
+      if (veryNarrow) {
+        // Leader line pointing from the zone to an offset label
+        const leaderY = centerY + 8;
+        const labelX = midX + (i < zoneGeo.length / 2 ? -20 : 20);
+        html += `<line x1="${midX}" y1="${leaderY}" x2="${labelX}" y2="${leaderY + 15}" stroke="#0d6efd" stroke-width="0.8" opacity="0.5"/>`;
+        html += `<text x="${labelX}" y="${leaderY + 25}" font-size="9" fill="#0d6efd" text-anchor="middle" font-weight="700">${depthLabel}</text>`;
+      } else {
+        html += `<line x1="${midX}" y1="${WATER_Y + 2}" x2="${midX}" y2="${centerY - 2}" stroke="#0d6efd" stroke-width="1" stroke-dasharray="4,3" opacity="0.5"/>`;
+        const lblFontSize = narrow ? 11 : 14;
+        const labelW = depthLabel.length * (narrow ? 6 : 8) + 10;
+        html += `<rect x="${midX - labelW/2}" y="${midWaterY - 10}" width="${labelW}" height="20" rx="5" fill="#0d6efd" opacity="0.12"/>`;
+        html += `<text x="${midX}" y="${midWaterY + 5}" font-size="${lblFontSize}" fill="#0d6efd" text-anchor="middle" font-weight="800">${depthLabel}</text>`;
+      }
+    }
+
+    // Zone boundary
+    if (i > 0) {
+      html += `<line x1="${g.x1}" y1="${WATER_Y - 3}" x2="${g.x1}" y2="${Math.max(g.y1, zoneGeo[i-1].y2) + 3}" stroke="#aacde6" stroke-width="1" stroke-dasharray="3,3"/>`;
+    }
+  });
+
+  // Diving envelope overlay
+  if (data.diving && zoneGeo.length > 0) {
+    const envPoints = data.diving.envPoints;
+    const deepEndX = zoneGeo[zoneGeo.length - 1].x2;
+
+    let envPath = '';
+    envPoints.forEach((ep, i) => {
+      const ex = deepEndX - ep.dist * scaleX;
+      const ey = WATER_Y + ep.depth * scaleY;
+      envPath += (i === 0 ? 'M' : 'L') + ` ${ex},${ey}`;
+    });
+    const lastEp = envPoints[envPoints.length - 1];
+    const lastEx = deepEndX - lastEp.dist * scaleX;
+    html += `<path d="${envPath} L ${lastEx},${WATER_Y} L ${deepEndX},${WATER_Y} Z" fill="#e74c3c" opacity="0.12"/>`;
+    html += `<path d="${envPath}" fill="none" stroke="#e74c3c" stroke-width="2" stroke-dasharray="6,3"/>`;
+
+    // Envelope point labels with smart collision avoidance
+    let prevLabelX = Infinity;
+    envPoints.forEach(ep => {
+      if (ep.name === 'W') return;
+      const ex = deepEndX - ep.dist * scaleX;
+      const ey = WATER_Y + ep.depth * scaleY;
+      html += `<circle cx="${ex}" cy="${ey}" r="3.5" fill="#e74c3c" stroke="#fff" stroke-width="1.5"/>`;
+      // Skip label if too close to previous label (< 40px apart)
+      if (Math.abs(ex - prevLabelX) < 40) return;
+      // Place label above deep points, below shallow points
+      const labelY = ey > WATER_Y + 100 ? ey - 10 : ey + 16;
+      html += `<text x="${ex}" y="${labelY}" font-size="8" fill="#e74c3c" text-anchor="middle" font-weight="700">${ep.name}</text>`;
+      prevLabelX = ex;
+    });
+
+    // Diving envelope legend — bottom-left, away from zone labels
+    html += `<line x1="${LEFT}" y1="${BOT - 4}" x2="${LEFT + 15}" y2="${BOT - 4}" stroke="#e74c3c" stroke-width="2" stroke-dasharray="4,2"/>`;
+    html += `<text x="${LEFT + 19}" y="${BOT - 1}" font-size="8" fill="#e74c3c">ANSI diving envelope</text>`;
+  }
+
+  // Title
+  html += `<text x="${(LEFT + endX) / 2}" y="${TOP - 12}" font-size="13" fill="var(--dark)" text-anchor="middle" font-weight="700">Water Depth Profile — ${data.poolW}' × ${data.poolL}'${data.diving ? ' + Diving Envelope' : ''}</text>`;
+
+  svg.innerHTML = html;
+}
+
+// ══════════════════════════════════════════════════
+// DIG CROSS-SECTION
+// ══════════════════════════════════════════════════
+
+function drawProfile(data) {
+  const svg = document.getElementById('profileSvg');
+  if (!svg) return;
+
+  const LEFT = 70, TOP = 50, RIGHT = 820, BOT = 400;
+  const WATER_Y = TOP + 50;
+
+  const totalLen = data.totalZoneLength;
+  const maxDepth = data.maxDig;
+  const scaleX = (RIGHT - LEFT) / (totalLen > 0 ? totalLen : 1);
+  const scaleY = (BOT - WATER_Y - 30) / (maxDepth > 0 ? maxDepth + 10 : 100);
+
+  let html = '';
+
+  // Build zone geometry
+  const zoneGeo = [];
+  let x = LEFT;
+  for (const r of data.resolved) {
+    const x1 = x;
+    const x2 = x + r.lengthFt * scaleX;
+    const y1dig = WATER_Y + r.digDepthStart * scaleY;
+    const y2dig = WATER_Y + r.digDepthEnd * scaleY;
+    const y1water = WATER_Y + r.waterDepthStart * scaleY;
+    const y2water = WATER_Y + r.waterDepthEnd * scaleY;
+    zoneGeo.push({ ...r, x1, x2, y1dig, y2dig, y1water, y2water });
+    x = x2;
+  }
+
+  // Water fill
+  if (zoneGeo.length > 0) {
+    let waterPath = `M ${LEFT},${WATER_Y}`;
+    zoneGeo.forEach(g => {
+      if (g.type === 'stairs' && g.numSteps > 0) {
+        const stepW = (g.x2 - g.x1) / g.numSteps;
+        const stepH = (g.y2water - g.y1water) / g.numSteps;
+        for (let s = 0; s < g.numSteps; s++) {
+          const sx = g.x1 + s * stepW;
+          const sy = g.y1water + s * stepH;
+          waterPath += ` L ${sx},${sy} L ${sx},${sy + stepH} L ${sx + stepW},${sy + stepH}`;
+        }
+      } else {
+        waterPath += ` L ${g.x1},${g.y1water} L ${g.x2},${g.y2water}`;
+      }
+    });
+    waterPath += ` L ${zoneGeo[zoneGeo.length - 1].x2},${WATER_Y} Z`;
+    html += `<path d="${waterPath}" fill="#b8dff0" opacity="0.35"/>`;
+  }
+
+  // Dig floor path
+  if (zoneGeo.length > 0) {
+    let digPath = `M ${LEFT},${zoneGeo[0].y1dig}`;
+    zoneGeo.forEach(g => {
+      if (g.type === 'stairs' && g.numSteps > 0) {
+        const stepW = (g.x2 - g.x1) / g.numSteps;
+        const stepH = (g.y2dig - g.y1dig) / g.numSteps;
+        for (let s = 0; s < g.numSteps; s++) {
+          const sx = g.x1 + s * stepW;
+          const sy = g.y1dig + s * stepH;
+          digPath += ` L ${sx},${sy} L ${sx},${sy + stepH} L ${sx + stepW},${sy + stepH}`;
+        }
+      } else {
+        digPath += ` L ${g.x1},${g.y1dig} L ${g.x2},${g.y2dig}`;
+      }
+    });
+    html += `<path d="${digPath}" fill="none" stroke="#8B4513" stroke-width="3" stroke-linejoin="round"/>`;
+
+    // Water floor path
+    let wPath = `M ${LEFT},${zoneGeo[0].y1water}`;
+    zoneGeo.forEach(g => {
+      if (g.type === 'stairs' && g.numSteps > 0) {
+        const stepW = (g.x2 - g.x1) / g.numSteps;
+        const stepH = (g.y2water - g.y1water) / g.numSteps;
+        for (let s = 0; s < g.numSteps; s++) {
+          const sx = g.x1 + s * stepW;
+          const sy = g.y1water + s * stepH;
+          wPath += ` L ${sx},${sy} L ${sx},${sy + stepH} L ${sx + stepW},${sy + stepH}`;
+        }
+      } else {
+        wPath += ` L ${g.x1},${g.y1water} L ${g.x2},${g.y2water}`;
+      }
+    });
+    html += `<path d="${wPath}" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linejoin="round" stroke-dasharray="6,3"/>`;
+  }
+
+  // Water surface — labels on the LEFT side to stay clear of wall/cover box area
+  const endX = zoneGeo.length > 0 ? zoneGeo[zoneGeo.length - 1].x2 : RIGHT;
+  html += `<line x1="${LEFT - 5}" y1="${WATER_Y}" x2="${endX + 10}" y2="${WATER_Y}" stroke="#0d6efd" stroke-width="2"/>`;
+  html += `<text x="${LEFT - 8}" y="${WATER_Y + 4}" font-size="10" fill="#0d6efd" font-weight="600" text-anchor="end">WATER</text>`;
+
+  // Deck line — label on the LEFT side
+  const aboveOffset = data.defaults.above;
+  const deckY = WATER_Y - aboveOffset * scaleY * 0.8;
+  html += `<line x1="${LEFT - 5}" y1="${deckY}" x2="${endX + 10}" y2="${deckY}" stroke="#888" stroke-width="2"/>`;
+  html += `<text x="${LEFT - 8}" y="${deckY + 4}" font-size="9" fill="#888" text-anchor="end">DECK</text>`;
+
+  // Zone labels + dimensions — always show dimension, skip name if too narrow
+  const MIN_DIG_W = 55;
+  zoneGeo.forEach((g, i) => {
+    const midX = (g.x1 + g.x2) / 2;
+    const zoneW = g.x2 - g.x1;
+    const narrow = zoneW < MIN_DIG_W;
+    const veryNarrow = zoneW < 30;
+    const fontSize = narrow ? 8 : 10;
+
+    // Zone name — truncate or skip for narrow zones
+    if (!veryNarrow) {
+      const displayName = narrow ? (g.name.match(/\(([^)]+)\)/) ? g.name.match(/\(([^)]+)\)/)[1] : g.name.substring(0, 8)) : g.name;
+      html += `<text x="${midX}" y="${TOP + 10}" font-size="${fontSize}" fill="${g.isAutoTransition ? 'var(--orange)' : 'var(--dark)'}" text-anchor="middle" font-weight="700">${displayName}</text>`;
+    }
+
+    // Length dimension — ALWAYS show, even for very narrow zones
+    if (zoneW >= 12) {
+      // Dimension line with tick marks
+      html += `<line x1="${g.x1 + 2}" y1="${TOP + 20}" x2="${g.x2 - 2}" y2="${TOP + 20}" stroke="#555" stroke-width="1"/>`;
+      html += `<line x1="${g.x1}" y1="${TOP + 17}" x2="${g.x1}" y2="${TOP + 23}" stroke="#555" stroke-width="1"/>`;
+      html += `<line x1="${g.x2}" y1="${TOP + 17}" x2="${g.x2}" y2="${TOP + 23}" stroke="#555" stroke-width="1"/>`;
+      html += `<text x="${midX}" y="${TOP + 32}" font-size="${veryNarrow ? 6 : narrow ? 7 : 9}" fill="#555" text-anchor="middle">${g.lengthFt.toFixed(1)}'</text>`;
+    } else {
+      // Ultra-narrow: just tick marks, no line or text
+      html += `<line x1="${g.x1}" y1="${TOP + 17}" x2="${g.x1}" y2="${TOP + 23}" stroke="#555" stroke-width="1"/>`;
+      html += `<line x1="${g.x2}" y1="${TOP + 17}" x2="${g.x2}" y2="${TOP + 23}" stroke="#555" stroke-width="1"/>`;
+    }
+
+    const centerDigY = (g.y1dig + g.y2dig) / 2;
+    const centerWaterY = (g.y1water + g.y2water) / 2;
+
+    // Slope ratio or step count badge (centered in zone)
+    if (g.type === 'slope') {
+      if (!veryNarrow) {
+        const rw = narrow ? 32 : 56;
+        html += `<rect x="${midX - rw/2}" y="${centerDigY + 4}" width="${rw}" height="14" rx="3" fill="#fff" opacity="0.9"/>`;
+        html += `<text x="${midX}" y="${centerDigY + 14}" font-size="${narrow ? 8 : 9}" fill="#8B4513" text-anchor="middle" font-weight="700">1:${g.slopeRatio}</text>`;
+      }
+    } else if (g.type === 'stairs') {
+      if (!veryNarrow) {
+        html += `<rect x="${midX - 28}" y="${centerDigY + 4}" width="56" height="14" rx="3" fill="#fff" opacity="0.9"/>`;
+        html += `<text x="${midX}" y="${centerDigY + 14}" font-size="9" fill="#8B4513" text-anchor="middle" font-weight="700">${g.numSteps} steps</text>`;
+      }
+    }
+
+    if (i > 0) {
+      html += `<line x1="${g.x1}" y1="${WATER_Y - 5}" x2="${g.x1}" y2="${Math.max(g.y1dig, zoneGeo[i-1].y2dig) + 5}" stroke="#ccc" stroke-width="1" stroke-dasharray="3,3"/>`;
+    }
+  });
+
+  // ── Deep End Wall Structure (always shown) ──
+  if (zoneGeo.length > 0) {
+    const lastGeo = zoneGeo[zoneGeo.length - 1];
+    const wallX = endX; // inside face of pool wall = right edge of last zone
+    const wallThickPx = Math.max(1 * scaleX, 8); // 1' concrete, min 8px for visibility
+
+    // Wall water depth at the deep end (last zone's end depth)
+    const wallWaterDepth = lastGeo.waterDepthEnd;
+    const wallDigDepth = lastGeo.digDepthEnd;
+    const wallWaterY = WATER_Y + wallWaterDepth * scaleY;
+    const wallDigY = WATER_Y + wallDigDepth * scaleY;
+
+    // Concrete wall: from deck down past the dig depth
+    const wallTopY = deckY;
+    const wallBotY = wallDigY + 8;
+    html += `<rect x="${wallX}" y="${wallTopY}" width="${wallThickPx}" height="${wallBotY - wallTopY}" fill="#999" opacity="0.6"/>`;
+    html += `<text x="${wallX + wallThickPx / 2}" y="${wallTopY - 4}" font-size="8" fill="#666" text-anchor="middle" font-weight="600">12" WALL</text>`;
+
+    // Vertical lines showing the wall goes from pool floor to deck
+    html += `<line x1="${wallX}" y1="${wallTopY}" x2="${wallX}" y2="${wallBotY}" stroke="#666" stroke-width="2"/>`;
+    html += `<line x1="${wallX + wallThickPx}" y1="${wallTopY}" x2="${wallX + wallThickPx}" y2="${wallBotY}" stroke="#666" stroke-width="1.5"/>`;
+
+    // Behind wall: dig profile drops to wallDigDepth then comes back up
+    const behindWallX = wallX + wallThickPx;
+    // Dig depth behind wall = same as wall dig depth (water depth + offset)
+    html += `<line x1="${behindWallX}" y1="${wallBotY}" x2="${behindWallX + 15}" y2="${wallBotY}" stroke="#8B4513" stroke-width="2"/>`;
+    // Vertical cut behind wall going back up to grade
+    html += `<line x1="${behindWallX + 15}" y1="${wallBotY}" x2="${behindWallX + 15}" y2="${deckY}" stroke="#8B4513" stroke-width="2" stroke-dasharray="4,3"/>`;
+
+    // Dimension: dig depth at wall
+    const dimX = wallX - 8;
+    html += `<line x1="${dimX}" y1="${WATER_Y}" x2="${dimX}" y2="${wallDigY}" stroke="#8B4513" stroke-width="1"/>`;
+    html += `<line x1="${dimX - 3}" y1="${WATER_Y}" x2="${dimX + 3}" y2="${WATER_Y}" stroke="#8B4513" stroke-width="1"/>`;
+    html += `<line x1="${dimX - 3}" y1="${wallDigY}" x2="${dimX + 3}" y2="${wallDigY}" stroke="#8B4513" stroke-width="1"/>`;
+    html += `<text x="${dimX - 3}" y="${(WATER_Y + wallDigY) / 2 + 3}" font-size="8" fill="#8B4513" text-anchor="end" font-weight="700">${fmtIn(wallDigDepth)}</text>`;
+    html += `<text x="${dimX - 3}" y="${(WATER_Y + wallDigY) / 2 + 12}" font-size="7" fill="#8B4513" text-anchor="end">dig@wall</text>`;
+
+    // ── Cover Box recess (behind wall, if enabled) ──
+    if (data.coverBox && data.coverBox.valid) {
+      const cb = data.coverBox;
+      const cbWidthPx = Math.max((cb.W / 12) * scaleX, 14); // min 14px for visibility
+      const cbDepthPx = cb.D * scaleY;
+
+      const cbLeft = behindWallX;
+      const cbTopY = deckY;
+      html += `<rect x="${cbLeft}" y="${cbTopY}" width="${cbWidthPx}" height="${cbDepthPx}" fill="#dceefb" stroke="#0d6efd" stroke-width="1.5" stroke-dasharray="4,2"/>`;
+
+      // Leader-line callout — position well BELOW the box to keep wall area clear
+      const cbMidX = cbLeft + cbWidthPx / 2;
+      const calloutX = cbLeft - 20;
+      const calloutY = cbTopY + cbDepthPx + 40;
+      html += `<line x1="${cbMidX}" y1="${cbTopY + cbDepthPx}" x2="${calloutX + 39}" y2="${calloutY + 2}" stroke="#0d6efd" stroke-width="1" stroke-dasharray="3,2"/>`;
+      html += `<rect x="${calloutX}" y="${calloutY}" width="78" height="26" rx="4" fill="#eef4ff" stroke="#0d6efd" stroke-width="1"/>`;
+      html += `<text x="${calloutX + 39}" y="${calloutY + 11}" font-size="8" fill="#0d6efd" text-anchor="middle" font-weight="700">COVER BOX</text>`;
+      html += `<text x="${calloutX + 39}" y="${calloutY + 21}" font-size="7" fill="#0d6efd" text-anchor="middle">${fmtIn(cb.W)}W × ${fmtIn(cb.D)}D</text>`;
+    }
+  }
+
+  // Legend
+  html += `<rect x="${LEFT}" y="${BOT - 20}" width="12" height="3" fill="#8B4513"/>`;
+  html += `<text x="${LEFT + 16}" y="${BOT - 17}" font-size="9" fill="#666">Dig line</text>`;
+  html += `<line x1="${LEFT + 80}" y1="${BOT - 18}" x2="${LEFT + 92}" y2="${BOT - 18}" stroke="#0d6efd" stroke-width="2" stroke-dasharray="4,2"/>`;
+  html += `<text x="${LEFT + 96}" y="${BOT - 15}" font-size="9" fill="#666">Pool floor (water depth)</text>`;
+
+  // Title
+  html += `<text x="${(LEFT + endX) / 2}" y="${TOP - 10}" font-size="13" fill="var(--dark)" text-anchor="middle" font-weight="700">Dig Sheet — ${data.digW}' × ${data.digL}' (dig) | ${data.poolW}' × ${data.poolL}' (water)</text>`;
+
+  svg.innerHTML = html;
+}
+
+// ══════════════════════════════════════════════════
+// COVER BOX PLAN VIEW
+// ══════════════════════════════════════════════════
+
+function drawCoverBoxPlan(cb) {
+  const svg = document.getElementById('cbPlanSvg');
+  if (!svg) return;
+
+  const M = cb.M, O = cb.O, T = cb.T, D = cb.D, W = cb.W, B = cb.B;
+  const poolLenIn = cb.poolL * 12;
+  const totalBoxLen = cb.totalBoxLen;
+
+  const svgW = 860, svgH = 480;
+  const margin = 70;
+  const availW = svgW - margin * 2 - 100;
+  const scale = Math.min(availW / totalBoxLen, 5);
+
+  const poolTop = 80;
+  const poolH = 90;
+  const beamY = poolTop + poolH;
+  const beamH = Math.max(B * 3.2, 32);
+  const boxY = beamY + beamH;
+  const boxH = Math.max(W * 3.2, 40);
+  const boxBottom = boxY + boxH;
+
+  const boxTotalPx = totalBoxLen * scale;
+  const boxLeft = margin;
+  const boxRight = boxLeft + boxTotalPx;
+  const mPx = M * scale;
+  const oPx = O * scale;
+  const poolLeftX = boxLeft + mPx;
+  const poolRightX = boxRight - oPx;
+  const poolPx = poolRightX - poolLeftX;
+
+  const dimCol1 = Math.max(boxRight, poolRightX) + 22;
+  const dimCol2 = dimCol1 + 60;
+
+  let html = `<rect x="0" y="0" width="${svgW}" height="${svgH}" fill="#fafcfe" rx="8"/>`;
+  html += `<text x="${svgW/2}" y="22" text-anchor="middle" font-size="14" font-weight="700" fill="#0d2137">PLAN VIEW (LOOKING DOWN)</text>`;
+  html += `<text x="${svgW/2}" y="40" text-anchor="middle" font-size="10" fill="#6b7a8d">Pool at top · cover box below beam wall · wall cut away for clarity</text>`;
+
+  // Pool water
+  html += `<rect x="${poolLeftX}" y="${poolTop}" width="${poolPx}" height="${poolH}" fill="#d4eaff" stroke="#8cc4ff" stroke-width="1.5" rx="3"/>`;
+  for (let wy = poolTop + 18; wy < poolTop + poolH - 8; wy += 20) {
+    html += `<path d="M${poolLeftX+8} ${wy} Q${poolLeftX+poolPx*0.25} ${wy-5} ${poolLeftX+poolPx*0.5} ${wy} Q${poolLeftX+poolPx*0.75} ${wy+5} ${poolRightX-8} ${wy}" fill="none" stroke="#8cc4ff" stroke-width="0.8" opacity="0.4"/>`;
+  }
+  html += `<text x="${(poolLeftX+poolRightX)/2}" y="${poolTop+poolH/2+5}" text-anchor="middle" font-size="15" fill="#3388cc" font-weight="700">POOL</text>`;
+
+  // Beam wall
+  html += `<rect x="${poolLeftX}" y="${beamY}" width="${poolPx}" height="${beamH}" fill="#bbb4a8" stroke="#8a7a6a" stroke-width="1.5"/>`;
+  for (let hx = poolLeftX+8; hx < poolRightX-5; hx += 22) {
+    html += `<line x1="${hx}" y1="${beamY+2}" x2="${hx+12}" y2="${beamY+beamH-2}" stroke="#a09888" stroke-width="0.5" opacity="0.4"/>`;
+  }
+  html += `<text x="${(poolLeftX+poolRightX)/2}" y="${beamY+beamH/2+5}" text-anchor="middle" font-size="10" fill="#5a4a3a" font-weight="700">BEAM WALL (B)</text>`;
+
+  // Track slot
+  html += `<rect x="${poolLeftX+4}" y="${beamY+beamH-5}" width="${poolPx-8}" height="4" fill="#556677" rx="1" opacity="0.6"/>`;
+
+  // Cover Box
+  html += `<rect x="${boxLeft}" y="${boxY}" width="${boxTotalPx}" height="${boxH}" fill="#e8eef4" stroke="#0d6efd" stroke-width="2" rx="3"/>`;
+
+  // Drum
+  const drumR = Math.min(boxH*0.28, 16);
+  html += `<circle cx="${(boxLeft+boxRight)/2}" cy="${boxY+boxH/2}" r="${drumR}" fill="none" stroke="#aaa" stroke-width="1.5" stroke-dasharray="3,2"/>`;
+
+  // Motor end
+  html += `<rect x="${boxLeft}" y="${boxY}" width="${mPx}" height="${boxH}" fill="rgba(13,110,253,0.06)" stroke="none" rx="3"/>`;
+  html += `<line x1="${boxLeft+mPx}" y1="${boxY}" x2="${boxLeft+mPx}" y2="${boxY+boxH}" stroke="#0d6efd" stroke-width="0.5" stroke-dasharray="3,2"/>`;
+  html += `<text x="${boxLeft+mPx/2}" y="${boxY+16}" text-anchor="middle" font-size="10" fill="#0d6efd" font-weight="600">MOTOR</text>`;
+
+  // Conduit stub
+  html += `<rect x="${boxLeft+8}" y="${boxY+boxH-18}" width="7" height="13" fill="#777" rx="2"/>`;
+  html += `<text x="${boxLeft+12}" y="${boxY+boxH-3}" text-anchor="middle" font-size="7" fill="#888">conduit</text>`;
+
+  // Opposite end
+  html += `<line x1="${boxRight-oPx}" y1="${boxY}" x2="${boxRight-oPx}" y2="${boxY+boxH}" stroke="#27ae60" stroke-width="0.5" stroke-dasharray="3,2"/>`;
+
+  // Center label
+  const boxLabelX = (boxLeft + mPx + boxRight - oPx) / 2;
+  html += `<text x="${boxLabelX}" y="${boxY+boxH/2+5}" text-anchor="middle" font-size="12" fill="#0d6efd" font-weight="700">COVER BOX</text>`;
+
+  // Drain
+  html += `<circle cx="${boxRight-oPx/2}" cy="${boxY+boxH-10}" r="5" fill="none" stroke="#888" stroke-width="1"/>`;
+  html += `<text x="${boxRight-oPx/2}" y="${boxY+boxH-18}" text-anchor="middle" font-size="7" fill="#888">drain</text>`;
+
+  // Bond wires
+  html += `<line x1="${boxLeft-3}" y1="${boxY+boxH/2}" x2="${boxLeft-12}" y2="${boxY+boxH/2}" stroke="#555" stroke-width="1"/>`;
+  html += `<circle cx="${boxLeft-15}" cy="${boxY+boxH/2}" r="3.5" fill="none" stroke="#555" stroke-width="1"/>`;
+  html += `<text x="${boxLeft-15}" y="${boxY+boxH/2+14}" text-anchor="middle" font-size="7" fill="#888">bond</text>`;
+  html += `<line x1="${boxRight+3}" y1="${boxY+boxH/2}" x2="${boxRight+12}" y2="${boxY+boxH/2}" stroke="#555" stroke-width="1"/>`;
+  html += `<circle cx="${boxRight+15}" cy="${boxY+boxH/2}" r="3.5" fill="none" stroke="#555" stroke-width="1"/>`;
+  html += `<text x="${boxRight+15}" y="${boxY+boxH/2+14}" text-anchor="middle" font-size="7" fill="#888">bond</text>`;
+
+  // DIMENSION LINES
+  // M
+  const dimY1 = poolTop - 14;
+  html += `<line x1="${boxLeft}" y1="${dimY1}" x2="${poolLeftX}" y2="${dimY1}" stroke="#0d6efd" stroke-width="1.5"/>`;
+  html += `<line x1="${boxLeft}" y1="${dimY1-5}" x2="${boxLeft}" y2="${dimY1+5}" stroke="#0d6efd" stroke-width="1.5"/>`;
+  html += `<line x1="${poolLeftX}" y1="${dimY1-5}" x2="${poolLeftX}" y2="${dimY1+5}" stroke="#0d6efd" stroke-width="1.5"/>`;
+  html += `<text x="${(boxLeft+poolLeftX)/2}" y="${dimY1-4}" text-anchor="middle" font-size="11" fill="#0d6efd" font-weight="800">M = ${fmtIn(M)}</text>`;
+
+  // O
+  html += `<line x1="${poolRightX}" y1="${dimY1}" x2="${boxRight}" y2="${dimY1}" stroke="#27ae60" stroke-width="1.5"/>`;
+  html += `<line x1="${poolRightX}" y1="${dimY1-5}" x2="${poolRightX}" y2="${dimY1+5}" stroke="#27ae60" stroke-width="1.5"/>`;
+  html += `<line x1="${boxRight}" y1="${dimY1-5}" x2="${boxRight}" y2="${dimY1+5}" stroke="#27ae60" stroke-width="1.5"/>`;
+  html += `<text x="${(poolRightX+boxRight)/2}" y="${dimY1-4}" text-anchor="middle" font-size="11" fill="#27ae60" font-weight="800">O = ${fmtIn(O)}</text>`;
+
+  // B — beam thickness
+  html += `<line x1="${dimCol1}" y1="${beamY}" x2="${dimCol1}" y2="${beamY+beamH}" stroke="#8a7a6a" stroke-width="1.5"/>`;
+  html += `<line x1="${dimCol1-5}" y1="${beamY}" x2="${dimCol1+5}" y2="${beamY}" stroke="#8a7a6a" stroke-width="1.5"/>`;
+  html += `<line x1="${dimCol1-5}" y1="${beamY+beamH}" x2="${dimCol1+5}" y2="${beamY+beamH}" stroke="#8a7a6a" stroke-width="1.5"/>`;
+  html += `<text x="${dimCol1+10}" y="${beamY+beamH/2+4}" font-size="10" fill="#5a4a3a" font-weight="700">B = ${fmtIn(B)}</text>`;
+
+  // W — box width
+  html += `<line x1="${dimCol1}" y1="${boxY}" x2="${dimCol1}" y2="${boxY+boxH}" stroke="#0d6efd" stroke-width="1.5"/>`;
+  html += `<line x1="${dimCol1-5}" y1="${boxY}" x2="${dimCol1+5}" y2="${boxY}" stroke="#0d6efd" stroke-width="1.5"/>`;
+  html += `<line x1="${dimCol1-5}" y1="${boxY+boxH}" x2="${dimCol1+5}" y2="${boxY+boxH}" stroke="#0d6efd" stroke-width="1.5"/>`;
+  html += `<text x="${dimCol1+10}" y="${boxY+boxH/2+4}" font-size="10" fill="#0d6efd" font-weight="700">W = ${fmtIn(W)}</text>`;
+
+  // TOTAL (B+W)
+  html += `<line x1="${dimCol2}" y1="${beamY}" x2="${dimCol2}" y2="${boxY+boxH}" stroke="#e74c3c" stroke-width="2"/>`;
+  html += `<line x1="${dimCol2-6}" y1="${beamY}" x2="${dimCol2+6}" y2="${beamY}" stroke="#e74c3c" stroke-width="2"/>`;
+  html += `<line x1="${dimCol2-6}" y1="${boxY+boxH}" x2="${dimCol2+6}" y2="${boxY+boxH}" stroke="#e74c3c" stroke-width="2"/>`;
+  html += `<text x="${dimCol2+10}" y="${beamY+(boxY+boxH-beamY)/2-4}" font-size="11" fill="#e74c3c" font-weight="800">TOTAL</text>`;
+  html += `<text x="${dimCol2+10}" y="${beamY+(boxY+boxH-beamY)/2+10}" font-size="11" fill="#e74c3c" font-weight="800">${fmtIn(B + W)}</text>`;
+
+  // TOTAL BOX LENGTH
+  const totalDimY = boxBottom + 24;
+  html += `<line x1="${boxLeft}" y1="${totalDimY}" x2="${boxRight}" y2="${totalDimY}" stroke="#e74c3c" stroke-width="2"/>`;
+  html += `<line x1="${boxLeft}" y1="${totalDimY-6}" x2="${boxLeft}" y2="${totalDimY+6}" stroke="#e74c3c" stroke-width="2"/>`;
+  html += `<line x1="${boxRight}" y1="${totalDimY-6}" x2="${boxRight}" y2="${totalDimY+6}" stroke="#e74c3c" stroke-width="2"/>`;
+  html += `<text x="${(boxLeft+boxRight)/2}" y="${totalDimY+16}" text-anchor="middle" font-size="12" fill="#e74c3c" font-weight="800">TOTAL LENGTH: ${fmtIn(totalBoxLen)}</text>`;
+
+  // D note + T note
+  html += `<text x="${boxRight-oPx-8}" y="${boxY+boxH-6}" text-anchor="end" font-size="9" fill="#0d6efd" font-weight="600">D = ${fmtIn(D)} deep</text>`;
+  html += `<text x="${poolLeftX+8}" y="${beamY+beamH-10}" font-size="8" fill="#556677" font-weight="600">T = ${fmtIn(T)} min</text>`;
+
+  svg.innerHTML = html;
+}
+
+// ══════════════════════════════════════════════════
+// COVER BOX CROSS-SECTION
+// ══════════════════════════════════════════════════
+
+function drawCoverBoxSection(cb) {
+  const svg = document.getElementById('cbSectionSvg');
+  if (!svg) return;
+
+  const T = cb.T, D = cb.D, W = cb.W, B = cb.B;
+
+  const svgW = 860, svgH = 440;
+  const pxPerInH = 12, pxPerInV = 14;
+
+  const deckY = 60;
+  const deckThick = 14;
+  const deckBot = deckY + deckThick;
+
+  const poolWaterLeft = 40;
+  const poolWaterW = 160;
+  const wallLeft = poolWaterLeft + poolWaterW;
+
+  const beamPx = B * pxPerInH;
+  const wallRight = wallLeft + beamPx;
+  const throatPx = T * pxPerInH;
+
+  const boxPx = W * pxPerInH;
+  const boxRight = wallRight + boxPx;
+  const depthPx = D * pxPerInV;
+
+  const earthRight = boxRight + 80;
+  const poolDepth = depthPx + 60;
+
+  let html = `<rect x="0" y="0" width="${svgW}" height="${svgH}" fill="#fafcfe" rx="8"/>`;
+  html += `<text x="${svgW/2}" y="22" text-anchor="middle" font-size="14" font-weight="700" fill="#0d2137">CROSS-SECTION (SIDE VIEW — THROUGH BACK WALL)</text>`;
+  html += `<text x="${svgW/2}" y="40" text-anchor="middle" font-size="10" fill="#6b7a8d">Pool water left · beam wall center · cover box right</text>`;
+
+  // Earth
+  html += `<rect x="${boxRight}" y="${deckY}" width="${earthRight-boxRight}" height="${depthPx+deckThick+40}" fill="#e8dcc8" stroke="#c4b8a0" stroke-width="1"/>`;
+
+  // Pool water
+  html += `<rect x="${poolWaterLeft}" y="${deckBot}" width="${poolWaterW}" height="${poolDepth}" fill="#d4eaff" stroke="#8cc4ff" stroke-width="1.5"/>`;
+  for (let wy = deckBot + 20; wy < deckBot + poolDepth - 10; wy += 22) {
+    html += `<path d="M${poolWaterLeft+8} ${wy} Q${poolWaterLeft+poolWaterW*0.3} ${wy-5} ${poolWaterLeft+poolWaterW*0.5} ${wy} Q${poolWaterLeft+poolWaterW*0.75} ${wy+5} ${wallLeft-8} ${wy}" fill="none" stroke="#8cc4ff" stroke-width="0.8" opacity="0.4"/>`;
+  }
+  html += `<text x="${poolWaterLeft+poolWaterW/2}" y="${deckBot+36}" text-anchor="middle" font-size="14" fill="#3388cc" font-weight="700">POOL</text>`;
+  html += `<text x="${poolWaterLeft+poolWaterW/2}" y="${deckBot+52}" text-anchor="middle" font-size="11" fill="#3388cc">WATER</text>`;
+
+  // Deck / coping
+  html += `<rect x="${wallLeft-10}" y="${deckY}" width="${beamPx+boxPx+20}" height="${deckThick}" fill="#c8b8a0" stroke="#8a7a6a" stroke-width="1"/>`;
+  html += `<text x="${wallLeft+beamPx/2}" y="${deckY-6}" text-anchor="middle" font-size="10" fill="#5a4a3a" font-weight="600">DECK / COPING</text>`;
+
+  // Beam wall
+  html += `<rect x="${wallLeft}" y="${deckBot}" width="${beamPx}" height="${depthPx+40}" fill="#bbb4a8" stroke="#8a7a6a" stroke-width="1.5"/>`;
+  for (let hy = deckBot + 10; hy < deckBot + depthPx + 30; hy += 16) {
+    html += `<line x1="${wallLeft+4}" y1="${hy}" x2="${wallLeft+beamPx-4}" y2="${hy+10}" stroke="#a09888" stroke-width="0.5" opacity="0.4"/>`;
+  }
+  html += `<text x="${wallLeft+beamPx/2}" y="${deckBot+depthPx/2}" text-anchor="middle" font-size="11" fill="#5a4a3a" font-weight="700" transform="rotate(-90,${wallLeft+beamPx/2},${deckBot+depthPx/2})">BEAM WALL</text>`;
+
+  // Throat / track slot
+  const throatTop = deckBot;
+  const throatH = 24;
+  html += `<rect x="${wallLeft}" y="${throatTop}" width="${throatPx}" height="${throatH}" fill="#556677" rx="2"/>`;
+  html += `<text x="${wallLeft-6}" y="${throatTop+throatH/2+4}" text-anchor="end" font-size="9" fill="#556677" font-weight="600">T</text>`;
+
+  // Cover Box
+  html += `<rect x="${wallRight}" y="${deckBot}" width="${boxPx}" height="${depthPx}" fill="#e8eef4" stroke="#0d6efd" stroke-width="2"/>`;
+  html += `<text x="${wallRight+boxPx/2}" y="${deckBot+22}" text-anchor="middle" font-size="11" fill="#0d6efd" font-weight="700">COVER BOX</text>`;
+
+  // Drum
+  const drumR = Math.min(depthPx * 0.2, 24);
+  const drumCX = wallRight + boxPx / 2;
+  const drumCY = deckBot + depthPx - drumR - 12;
+  html += `<circle cx="${drumCX}" cy="${drumCY}" r="${drumR}" fill="none" stroke="#aaa" stroke-width="1.5" stroke-dasharray="4,2"/>`;
+  html += `<text x="${drumCX}" y="${drumCY+4}" text-anchor="middle" font-size="9" fill="#888" font-weight="600">DRUM</text>`;
+
+  // Cover lid line
+  const lidY = deckBot + 10;
+  html += `<line x1="${wallRight+6}" y1="${lidY}" x2="${wallRight+boxPx-6}" y2="${lidY}" stroke="#0d6efd" stroke-width="2"/>`;
+  html += `<text x="${wallRight+boxPx-8}" y="${lidY-4}" text-anchor="end" font-size="8" fill="#0d6efd" font-weight="600">COVER (RETRACTED)</text>`;
+
+  // 3" drain
+  html += `<rect x="${wallRight+boxPx/2-8}" y="${deckBot+depthPx-5}" width="16" height="5" fill="#556677" rx="1"/>`;
+  html += `<text x="${wallRight+boxPx/2}" y="${deckBot+depthPx+12}" text-anchor="middle" font-size="8" fill="#888">3" drain</text>`;
+
+  // DIMENSION LINES
+  // D
+  const dDimXr = boxRight + 22;
+  html += `<line x1="${dDimXr}" y1="${deckBot}" x2="${dDimXr}" y2="${deckBot+depthPx}" stroke="#0d6efd" stroke-width="1.5"/>`;
+  html += `<line x1="${dDimXr-6}" y1="${deckBot}" x2="${dDimXr+6}" y2="${deckBot}" stroke="#0d6efd" stroke-width="1.5"/>`;
+  html += `<line x1="${dDimXr-6}" y1="${deckBot+depthPx}" x2="${dDimXr+6}" y2="${deckBot+depthPx}" stroke="#0d6efd" stroke-width="1.5"/>`;
+  html += `<text x="${dDimXr+12}" y="${deckBot+depthPx/2-4}" font-size="13" fill="#0d6efd" font-weight="800">D</text>`;
+  html += `<text x="${dDimXr+12}" y="${deckBot+depthPx/2+12}" font-size="12" fill="#0d6efd" font-weight="700">${fmtIn(D)}</text>`;
+
+  // W
+  const wDimY = deckBot + depthPx + 24;
+  html += `<line x1="${wallRight}" y1="${wDimY}" x2="${boxRight}" y2="${wDimY}" stroke="#27ae60" stroke-width="1.5"/>`;
+  html += `<line x1="${wallRight}" y1="${wDimY-5}" x2="${wallRight}" y2="${wDimY+5}" stroke="#27ae60" stroke-width="1.5"/>`;
+  html += `<line x1="${boxRight}" y1="${wDimY-5}" x2="${boxRight}" y2="${wDimY+5}" stroke="#27ae60" stroke-width="1.5"/>`;
+  html += `<text x="${(wallRight+boxRight)/2}" y="${wDimY-4}" text-anchor="middle" font-size="12" fill="#27ae60" font-weight="800">W = ${fmtIn(W)}</text>`;
+
+  // B
+  const bDimY = wDimY + 24;
+  html += `<line x1="${wallLeft}" y1="${bDimY}" x2="${wallRight}" y2="${bDimY}" stroke="#8a7a6a" stroke-width="1.5"/>`;
+  html += `<line x1="${wallLeft}" y1="${bDimY-5}" x2="${wallLeft}" y2="${bDimY+5}" stroke="#8a7a6a" stroke-width="1.5"/>`;
+  html += `<line x1="${wallRight}" y1="${bDimY-5}" x2="${wallRight}" y2="${bDimY+5}" stroke="#8a7a6a" stroke-width="1.5"/>`;
+  html += `<text x="${(wallLeft+wallRight)/2}" y="${bDimY-4}" text-anchor="middle" font-size="12" fill="#5a4a3a" font-weight="800">B = ${fmtIn(B)}</text>`;
+
+  // TOTAL DIG
+  const totalDimY = bDimY + 26;
+  html += `<line x1="${wallLeft}" y1="${totalDimY}" x2="${boxRight}" y2="${totalDimY}" stroke="#e74c3c" stroke-width="2"/>`;
+  html += `<line x1="${wallLeft}" y1="${totalDimY-6}" x2="${wallLeft}" y2="${totalDimY+6}" stroke="#e74c3c" stroke-width="2"/>`;
+  html += `<line x1="${boxRight}" y1="${totalDimY-6}" x2="${boxRight}" y2="${totalDimY+6}" stroke="#e74c3c" stroke-width="2"/>`;
+  html += `<text x="${(wallLeft+boxRight)/2}" y="${totalDimY+16}" text-anchor="middle" font-size="13" fill="#e74c3c" font-weight="800">TOTAL DIG: ${fmtIn(B + W)} behind water</text>`;
+
+  svg.innerHTML = html;
+}
+
+// ══════════════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════════════
+
+function fmtIn(inches) {
+  if (inches === 0) return '0"';
+  const ft = Math.floor(inches / 12);
+  const inc = Math.round(inches % 12);
+  if (ft === 0) return inc + '"';
+  if (inc === 0) return ft + "'";
+  return ft + "'-" + inc + '"';
+}
+
+function suggestStairRise(totalRise) {
+  // Find a rise between 6-12" that produces perfectly even steps
+  // Strategy: try each step count and pick the one with actualRise closest to 10" (ideal) and within [6,12]
+  if (totalRise <= 0) return 10;
+  let bestRise = 10, bestScore = Infinity;
+  for (let n = 1; n <= 20; n++) {
+    const r = totalRise / n;
+    if (r < 6 || r > 12) continue;
+    // Prefer rises close to 10", then prefer whole numbers
+    const distFrom10 = Math.abs(r - 10);
+    const fractionalPenalty = (r % 1 === 0) ? 0 : (r % 0.5 === 0) ? 0.1 : 0.3;
+    const score = distFrom10 + fractionalPenalty;
+    if (score < bestScore) {
+      bestScore = score;
+      bestRise = Math.round(r * 2) / 2; // round to nearest 0.5"
+    }
+  }
+  return bestRise;
+}
+
+function printPDF() {
+  window.print();
+}
+
+// Preload logo for PNG watermark
+let _logoImg = null;
+(function preloadLogo() {
+  _logoImg = new Image();
+  _logoImg.crossOrigin = 'anonymous';
+  _logoImg.src = 'logo.png';
+})();
+
+function saveSectionPNG(btn) {
+  const card = btn.closest('.card');
+  if (!card) return;
+  // Hide the button itself during capture
+  btn.style.display = 'none';
+  html2canvas(card, { scale: 2, backgroundColor: '#fff', useCORS: true }).then(canvas => {
+    btn.style.display = '';
+    const ctx = canvas.getContext('2d');
+    // Draw logo watermark — centered, semi-transparent
+    if (_logoImg && _logoImg.complete && _logoImg.naturalWidth > 0) {
+      const logoW = canvas.width * 0.35;
+      const logoH = logoW * (_logoImg.naturalHeight / _logoImg.naturalWidth);
+      const lx = (canvas.width - logoW) / 2;
+      const ly = (canvas.height - logoH) / 2;
+      ctx.globalAlpha = 0.08;
+      ctx.drawImage(_logoImg, lx, ly, logoW, logoH);
+      ctx.globalAlpha = 1.0;
+    }
+    // Trigger download
+    const link = document.createElement('a');
+    const title = card.querySelector('h2');
+    const name = title ? title.textContent.replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase() : 'section';
+    link.download = `pasadena-pools-${name}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  }).catch(err => {
+    btn.style.display = '';
+    console.error('PNG save failed:', err);
+    alert('Could not save PNG. Try again.');
+  });
+}
+
+// ══════════════════════════════════════════════════
+// SAVE / LOAD CONFIGURATIONS
+// ══════════════════════════════════════════════════
+
+const CONFIG_API = '/api/configs';
+let _configCache = []; // in-memory cache of config index
+
+function getConfigState() {
+  return {
+    poolWidth: parseFloat(document.getElementById('poolWidth').value),
+    poolLength: parseFloat(document.getElementById('poolLength').value),
+    freeboard: parseFloat(document.getElementById('freeboard').value),
+    floatAllow: parseFloat(document.getElementById('floatAllow').value),
+    coverTrack: parseFloat(document.getElementById('coverTrack').value),
+    coping: parseFloat(document.getElementById('coping').value),
+    floorConcrete: parseFloat(document.getElementById('floorConcrete').value),
+    footingDepth: parseFloat(document.getElementById('footingDepth').value),
+    gravelOn: document.getElementById('gravelToggle').checked,
+    gravelThick: parseFloat(document.getElementById('gravelThick').value),
+    divingOn: document.getElementById('divingToggle').checked,
+    divingType: document.getElementById('divingType').value,
+    boardLength: document.getElementById('boardLength').value,
+    divingDepthB: parseFloat(document.getElementById('divingDepthB').value),
+    coverBoxOn: document.getElementById('coverBoxToggle').checked,
+    beamThickness: parseFloat(document.getElementById('beamThickness').value),
+    shallowZones: JSON.parse(JSON.stringify(shallowZones)),
+    deepZones: JSON.parse(JSON.stringify(deepZones)),
+    savedDeepZones: JSON.parse(JSON.stringify(savedDeepZones)),
+  };
+}
+
+function setConfigState(cfg) {
+  document.getElementById('poolWidth').value = cfg.poolWidth;
+  document.getElementById('poolLength').value = cfg.poolLength;
+  document.getElementById('freeboard').value = cfg.freeboard;
+  document.getElementById('floatAllow').value = cfg.floatAllow;
+  document.getElementById('coverTrack').value = cfg.coverTrack;
+  document.getElementById('coping').value = cfg.coping;
+  document.getElementById('floorConcrete').value = cfg.floorConcrete;
+  document.getElementById('footingDepth').value = cfg.footingDepth;
+  document.getElementById('gravelToggle').checked = cfg.gravelOn;
+  document.getElementById('gravelThick').value = cfg.gravelThick;
+  document.getElementById('gravelRow').style.display = cfg.gravelOn ? '' : 'none';
+  document.getElementById('divingType').value = cfg.divingType || '5';
+  document.getElementById('boardLength').value = cfg.boardLength || '10';
+  document.getElementById('divingDepthB').value = cfg.divingDepthB || 108;
+  document.getElementById('beamThickness').value = cfg.beamThickness || 10;
+
+  // Restore zone arrays
+  shallowZones = JSON.parse(JSON.stringify(cfg.shallowZones));
+  deepZones = JSON.parse(JSON.stringify(cfg.deepZones));
+  savedDeepZones = cfg.savedDeepZones ? JSON.parse(JSON.stringify(cfg.savedDeepZones)) : [];
+
+  // Restore diving toggle state (needs to happen after zones are set)
+  const divingWasOn = document.getElementById('divingToggle').checked;
+  document.getElementById('divingToggle').checked = cfg.divingOn;
+  document.getElementById('divingOptions').style.display = cfg.divingOn ? '' : 'none';
+  if (cfg.divingOn) {
+    document.getElementById('addDeepBtn').style.display = 'none';
+  } else {
+    document.getElementById('addDeepBtn').style.display = '';
+  }
+
+  // Restore cover box toggle
+  document.getElementById('coverBoxToggle').checked = cfg.coverBoxOn;
+  document.getElementById('coverBoxOptions').style.display = cfg.coverBoxOn ? '' : 'none';
+
+  updateOffsetDisplay();
+  renderAllZones();
+  if (cfg.coverBoxOn) updateCoverBoxDisplay();
+}
+
+async function refreshConfigDropdown() {
+  const sel = document.getElementById('configSelect');
+  sel.innerHTML = '<option value="">— Loading… —</option>';
+  try {
+    const resp = await fetch(CONFIG_API);
+    const data = await resp.json();
+    _configCache = data.configs || [];
+  } catch (err) {
+    console.warn('Config API unavailable:', err);
+    _configCache = [];
+  }
+  sel.innerHTML = '<option value="">— Select a saved config —</option>';
+  _configCache.forEach((c) => {
+    const d = new Date(c.saved_at);
+    const dateStr = `${d.getMonth()+1}/${d.getDate()}/${String(d.getFullYear()).slice(2)}`;
+    const timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    const ver = c.version ? ` v${c.version}` : '';
+    sel.innerHTML += `<option value="${c.id}">${c.project_name}${ver} — ${dateStr} ${timeStr}</option>`;
+  });
+  // Reset actions visibility
+  document.getElementById('configActions').style.display = 'none';
+  document.getElementById('configMeta').innerHTML = '';
+  document.querySelector('.config-save-standalone').style.display = '';
+}
+
+function onConfigSelect() {
+  const sel = document.getElementById('configSelect');
+  const meta = document.getElementById('configMeta');
+  const actions = document.getElementById('configActions');
+  const saveBtn = document.querySelector('.config-save-standalone');
+  const id = sel.value;
+  if (!id) {
+    meta.innerHTML = '';
+    actions.style.display = 'none';
+    saveBtn.style.display = '';
+    return;
+  }
+  const c = _configCache.find(x => x.id === id);
+  if (!c) return;
+  const poolDesc = `${c.pool_width}'×${c.pool_length}' pool`;
+  const diving = c.diving_on ? ', diving' : '';
+  const cover = c.cover_box_on ? ', cover box' : '';
+  meta.innerHTML = `${poolDesc}${diving}${cover}${c.notes ? ' — ' + c.notes : ''}`;
+  actions.style.display = 'flex';
+  saveBtn.style.display = 'none';
+}
+
+function showSaveDialog() {
+  let defaultName = '';
+  let nextVersion = 1;
+
+  // If a config is currently selected, pre-fill its name and bump version
+  const selId = document.getElementById('configSelect').value;
+  if (selId) {
+    const existing = _configCache.find(x => x.id === selId);
+    if (existing) {
+      defaultName = existing.project_name;
+      const maxVer = _configCache.filter(c => c.project_name === defaultName).reduce((m, c) => Math.max(m, c.version || 1), 0);
+      nextVersion = maxVer + 1;
+    }
+  }
+
+  const overlay = document.createElement('div');
+  overlay.className = 'save-dialog-overlay';
+  overlay.id = 'saveDialogOverlay';
+  overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+  overlay.innerHTML = `
+    <div class="save-dialog">
+      <h3>Save Configuration</h3>
+      <div class="form-group">
+        <label>Project Name</label>
+        <input type="text" id="saveConfigName" value="${defaultName}" placeholder="e.g. Smith Backyard Pool">
+      </div>
+      <div class="form-group">
+        <label>Version</label>
+        <input type="text" id="saveConfigVersion" value="${nextVersion}" placeholder="1" style="width:80px;">
+      </div>
+      <div class="form-group">
+        <label>Notes (optional)</label>
+        <input type="text" id="saveConfigNotes" placeholder="e.g. Added deeper hopper">
+      </div>
+      <div class="btn-row">
+        <button class="btn-cancel" onclick="document.getElementById('saveDialogOverlay').remove()">Cancel</button>
+        <button class="btn-save" onclick="doSaveConfig()">Save</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  setTimeout(() => document.getElementById('saveConfigName').focus(), 50);
+}
+
+async function doSaveConfig() {
+  const name = document.getElementById('saveConfigName').value.trim();
+  if (!name) { alert('Please enter a project name.'); return; }
+  const version = document.getElementById('saveConfigVersion').value.trim() || '1';
+  const notes = document.getElementById('saveConfigNotes').value.trim();
+  const saveBtn = document.querySelector('.save-dialog .btn-save');
+  saveBtn.textContent = 'Saving…';
+  saveBtn.disabled = true;
+  try {
+    const resp = await fetch(CONFIG_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        projectName: name,
+        version: parseInt(version) || 1,
+        notes,
+        state: getConfigState(),
+      }),
+    });
+    const result = await resp.json();
+    if (!resp.ok) throw new Error(result.error || 'Save failed');
+    document.getElementById('saveDialogOverlay').remove();
+    await refreshConfigDropdown();
+    // Select the newly saved config
+    document.getElementById('configSelect').value = result.id;
+    onConfigSelect();
+  } catch (err) {
+    alert('Save failed: ' + err.message);
+    saveBtn.textContent = 'Save';
+    saveBtn.disabled = false;
+  }
+}
+
+async function loadSelectedConfig() {
+  const sel = document.getElementById('configSelect');
+  const id = sel.value;
+  if (!id) { alert('Select a configuration first.'); return; }
+  const c = _configCache.find(x => x.id === id);
+  const label = c ? `${c.project_name} (v${c.version || 1})` : id;
+  if (!confirm(`Load "${label}"? This will replace your current inputs.`)) return;
+  try {
+    const resp = await fetch(`${CONFIG_API}?id=${id}`);
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || 'Load failed');
+    setConfigState(data.state);
+    generate();
+  } catch (err) {
+    alert('Load failed: ' + err.message);
+  }
+}
+
+async function deleteSelectedConfig() {
+  const id = document.getElementById('configSelect').value;
+  if (!id) return;
+  const c = _configCache.find(x => x.id === id);
+  const label = c ? `${c.project_name} (v${c.version || 1})` : id;
+  if (!confirm(`Delete "${label}"?`)) return;
+  try {
+    await fetch(`${CONFIG_API}?id=${id}`, { method: 'DELETE' });
+    await refreshConfigDropdown();
+  } catch (err) {
+    alert('Delete failed: ' + err.message);
+  }
+}
+
+// ══════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════
+
+document.getElementById('gravelToggle').addEventListener('change', () => { updateOffsetDisplay(); renderAllZones(); });
+['freeboard','floatAllow','coverTrack','coping','floorConcrete','gravelThick'].forEach(id => {
+  document.getElementById(id).addEventListener('change', () => { updateOffsetDisplay(); renderAllZones(); });
+});
+document.getElementById('poolLength').addEventListener('change', () => { updateSectionTotals(); });
+
+updateOffsetDisplay();
+renderAllZones();
+refreshConfigDropdown();
+</script>
+
+</body>
+</html>
